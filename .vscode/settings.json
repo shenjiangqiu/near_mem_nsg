@@ -6,6 +6,25 @@
         "istream": "cpp",
         "numeric": "cpp",
         "ostream": "cpp",
-        "sstream": "cpp"
-    }
+        "sstream": "cpp",
+        "array": "cpp",
+        "bitset": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "regex": "cpp"
+    },
+    "testMate.cpp.test.executables": "build/tests/all_tests",
+    "testMate.cpp.test.workingDirectory":"${workspaceFolder}/tests",
+    "testMate.cpp.debug.configTemplate": {
+        "type": "cppvsdbg",
+        "linux": { "type": "cppdbg", "MIMode": "gdb" },
+        "darwin": { "type": "cppdbg", "MIMode": "lldb" },
+        "win32": { "type": "cppvsdbg" },
+        "program": "${exec}",
+        "args": "${argsArray}",
+        "cwd": "${cwd}",
+        "env": "${envObj}",
+        "environment": "${envObjArray}",
+        "sourceFileMap": "${sourceFileMapObj}",
+      }
 }
