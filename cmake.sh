@@ -1,0 +1,1 @@
+CC=gcc-11 CXX=g++-11 cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=On 
