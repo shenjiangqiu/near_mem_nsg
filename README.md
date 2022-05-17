@@ -1,5 +1,6 @@
 # the near memory nsg simulator
 1. start up
+- git clone --recursive https://github.com/shenjiangqiu/near_mem_nsg.git 
 - component base: read component.h for more detail
 - ramulator : read tests/ramulator_test.cc
 - task_queue: use the tasks queue to implement pipeline: read tests/task_queue_test.cc and controller.h/cc
