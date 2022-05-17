@@ -11,7 +11,7 @@
 #include <iostream>
 
 #include <PrimitiveBloomFilter.h>
-
+#include <catch2/catch_test_macros.hpp>
 /**
  * Test add and contain element.
  *
@@ -137,7 +137,7 @@ bool testIntersectWith(void) {
  *
  * \return   zero if successful; nonzero otherwise.
  */
-int main(int argc, char *argv[]) {
+TEST_CASE("bloom_test") {
 
   int testFailureCnt = 0;
 
@@ -172,5 +172,4 @@ int main(int argc, char *argv[]) {
     std::cout << "\nOne or more tests failed\n" << std::endl;
   }
 
-  return 0;
 }

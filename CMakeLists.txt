@@ -9,6 +9,7 @@ add_subdirectory(deps/fmt)
 add_subdirectory(deps/plog)
 add_subdirectory(deps/cityhash)
 add_subdirectory(deps/cpp-bloom)
+add_subdirectory(deps/Catch2)
 
 #tests
 add_subdirectory(tests)

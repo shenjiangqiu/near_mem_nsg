@@ -1,7 +1,9 @@
 #include <fmt/format.h>
 #include <plog/Initializers/RollingFileInitializer.h>
 #include <plog/Log.h>
-int main() {
+#include <catch2/catch_test_macros.hpp>
+
+TEST_CASE("simple_test") {
   // 100k per file, max 3 files
   plog::init(plog::debug, "test.log", 100 * 1024, 3);
   PLOG_VERBOSE << fmt::format(
