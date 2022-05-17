@@ -14,3 +14,8 @@
 - then select dev toolkit from bottom bar
 -  then build the project from left bar
 -  then test the project from left bar
+
+3. things need todo
+- generate trace from nsg and push to controller
+- generate task from controller and push to pe
+- get the cycle funciton in pe from task
