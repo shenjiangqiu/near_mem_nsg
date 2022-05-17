@@ -51,6 +51,8 @@ private:
   std::shared_ptr<TaskQueue<DataType>> task_queue;
 };
 
+
+// function to make a sender and a receiver
 template <typename DataType>
 std::tuple<Sender<DataType>, Receiver<DataType>>
 make_task_queue(unsigned capacity) {

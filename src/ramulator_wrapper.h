@@ -24,7 +24,7 @@ struct MemTask {
   bool is_read;
 };
 
-class ramulator_wrapper : public componet {
+class ramulator_wrapper : public Component {
 public:
   void send(uint64_t addr, bool is_read);
   void tick();

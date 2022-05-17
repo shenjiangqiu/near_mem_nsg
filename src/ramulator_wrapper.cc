@@ -36,7 +36,7 @@ ramulator_wrapper::ramulator_wrapper(const ramulator::Config &configs,
                                      int cacheline, uint64_t &t_current_cycle,
                                      Receiver<MemTask> task_rx,
                                      Sender<uint64_t> ret_tx)
-    : componet(t_current_cycle), in_queue(task_rx), out_queue(ret_tx) {
+    : Component(t_current_cycle), in_queue(task_rx), out_queue(ret_tx) {
   const string &std_name = configs["standard"];
   assert(name_to_func.find(std_name) != name_to_func.end() &&
          "unrecognized standard name");

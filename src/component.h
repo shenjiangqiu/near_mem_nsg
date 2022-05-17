@@ -3,16 +3,21 @@
 #include <iostream>
 #include <string>
 namespace near_mem {
-class componet {
+
+// the component class, you should implement this class's virtual functions
+// - do_cycle()
+// - get_internal_size()
+// - get_line_trace()
+class Component {
 public:
   virtual std::string get_internal_size() const { return string(""); };
   // virtual double get_busy_percent() const = 0;
   virtual std::string get_line_trace() const { return string(""); };
-  componet(uint64_t &tcurrent_cycle) : current_cycle(tcurrent_cycle) {}
+  Component(uint64_t &tcurrent_cycle) : current_cycle(tcurrent_cycle) {}
   uint64_t &current_cycle;
   // static uint64_t current_cycle;
   // bool busy;
-  virtual ~componet() = default;
+  virtual ~Component() = default;
   bool cycle() {
     auto result = do_cycle();
     if (result) {

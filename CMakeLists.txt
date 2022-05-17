@@ -16,7 +16,7 @@ add_subdirectory(deps/ramulator)
 aux_source_directory(src MAINSOURCE)
 add_library(near_mem_nsg ${MAINSOURCE})
 target_link_libraries(near_mem_nsg PUBLIC fmt plog cityhash cpp_bloom ramulator)
-target_include_directories(near_mem_nsg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(near_mem_nsg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 #tests
 add_subdirectory(tests)
 
