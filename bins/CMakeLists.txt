@@ -1,0 +1,1 @@
+project(nsg_bin)
