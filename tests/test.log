@@ -68,3 +68,8 @@
 2022-05-17 12:02:54.713 WARN  [146881] [CATCH2_INTERNAL_TEST_0@16] this is a warning message, only appear when Something that is very dangerous is happening
 2022-05-17 12:02:54.713 ERROR [146881] [CATCH2_INTERNAL_TEST_0@18] this is an error message, only appear when something is wrong, but we can still continue
 2022-05-17 12:02:54.713 FATAL [146881] [CATCH2_INTERNAL_TEST_0@20] this is a fatal message, only appear when something is wrong and we can't continue
+2022-05-17 20:54:39.169 DEBUG [156223] [CATCH2_INTERNAL_TEST_0@12] this is a debug message, only appear when this is usefull to find a bug
+2022-05-17 20:54:39.169 INFO  [156223] [CATCH2_INTERNAL_TEST_0@14] this is an info message, only appear when this is usefull to get the runtime status of the program
+2022-05-17 20:54:39.169 WARN  [156223] [CATCH2_INTERNAL_TEST_0@16] this is a warning message, only appear when Something that is very dangerous is happening
+2022-05-17 20:54:39.169 ERROR [156223] [CATCH2_INTERNAL_TEST_0@18] this is an error message, only appear when something is wrong, but we can still continue
+2022-05-17 20:54:39.169 FATAL [156223] [CATCH2_INTERNAL_TEST_0@20] this is a fatal message, only appear when something is wrong and we can't continue

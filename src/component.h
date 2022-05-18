@@ -10,9 +10,9 @@ namespace near_mem {
 // - get_line_trace()
 class Component {
 public:
-  virtual std::string get_internal_size() const { return string(""); };
+  virtual std::string get_internal_size() const { return std::string(""); };
   // virtual double get_busy_percent() const = 0;
-  virtual std::string get_line_trace() const { return string(""); };
+  virtual std::string get_line_trace() const { return std::string(""); };
   Component(uint64_t &tcurrent_cycle) : current_cycle(tcurrent_cycle) {}
   uint64_t &current_cycle;
   // static uint64_t current_cycle;

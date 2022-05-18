@@ -3,6 +3,7 @@
 #include <memory>
 #include <queue>
 #include <tuple>
+#include<cassert>
 namespace near_mem {
 
 template <typename DataType> class TaskQueue {

@@ -4,10 +4,13 @@ project(near_mem_nsg VERSION 0.1)
 #settings
 set(CMAKE_CXX_STANDARD 20 )
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#set -Wall
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
 #deps
 add_subdirectory(deps/fmt)
 add_subdirectory(deps/plog)
 add_subdirectory(deps/cityhash)
+add_subdirectory(deps/nsg)
 add_subdirectory(deps/cpp-bloom)
 add_subdirectory(deps/Catch2)
 add_subdirectory(deps/ramulator)

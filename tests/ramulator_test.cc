@@ -21,7 +21,7 @@ TEST_CASE("ramulator_test") {
     if (!ret_rx.empty()) {
       std::cout << mem.get_internal_size() << std::endl;
 
-      auto ret = ret_rx.pop();
+      ret_rx.pop();
       //   std::cout << "out: " << ret << " " << cycle << std::endl;
     }
   }
@@ -32,7 +32,7 @@ TEST_CASE("ramulator_test") {
     mem.cycle();
     if (!ret_rx.empty()) {
       std::cout << mem.get_internal_size() << std::endl;
-      auto ret = ret_rx.pop();
+      ret_rx.pop();
       //   std::cout << "out: " << ret << " " << cycle << std::endl;
     }
   }

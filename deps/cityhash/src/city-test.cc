@@ -1324,7 +1324,7 @@ void Dump(int offset, int len) {
 
 #endif
 
-int main(int argc, char** argv) {
+int main(int , char** ) {
   setup();
   int i = 0;
   for ( ; i < kTestSize - 1; i++) {

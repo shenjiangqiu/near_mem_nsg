@@ -31,7 +31,7 @@ class Controller : Component {
 public:
   Controller(NsgTask &&task, uint64_t &current_cycle, TaskSender &&task_sender,
              TaskReceiver &&task_receiver)
-      : task(task), Component(current_cycle), task_sender(task_sender),
+      : Component(current_cycle), task(task), task_sender(task_sender),
         task_receiver(task_receiver) {}
 
   bool do_cycle() override;
