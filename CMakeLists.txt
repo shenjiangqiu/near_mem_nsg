@@ -14,7 +14,6 @@ add_subdirectory(deps/nsg)
 add_subdirectory(deps/cpp-bloom)
 add_subdirectory(deps/Catch2)
 add_subdirectory(deps/ramulator)
-
 #main project
 aux_source_directory(src MAINSOURCE)
 add_library(near_mem_nsg ${MAINSOURCE})
