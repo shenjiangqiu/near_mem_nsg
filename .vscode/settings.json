@@ -26,5 +26,5 @@
         "env": "${envObj}",
         "environment": "${envObjArray}",
         "sourceFileMap": "${sourceFileMapObj}",
-      }
+    },
 }
