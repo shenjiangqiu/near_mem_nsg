@@ -6,33 +6,35 @@
 #include <task_queue.h>
 
 namespace near_mem {
-enum SearchState{
-    query_init,
-    query_init_finish,
-    query_processed,
-    query_finished
+enum SearchState {
+  query_init,
+  query_init_finish,
+  query_processed,
+  query_finished
 };
-enum DataTypeName{
-    uint8,
-    int8,
-    float32,
+enum DataTypeName {
+  uint8,
+  int8,
+  float32,
 };
-struct DataType{
-    std::vector<uint8_t> uint8data;
-    std::vector<int8_t> int8data;
-    std::vector<float> float32data;
+struct DataType {
+  std::vector<uint8_t> uint8data;
+  std::vector<int8_t> int8data;
+  std::vector<float> float32data;
 };
-struct NsgData{
-    DataTypeName name;
-    uint64_t Query_ID;
-    uint64_t Query_Dimension;
-    uint64_t Query_Vector;
-    std::vector<std::vector<DataType>> Query_Data;
-    uint64_t State;
-    uint64_t Add_cycle;
+struct NsgData {
+  DataTypeName name;
+  uint64_t Query_ID;
+  uint64_t Query_Dimension;
+  uint64_t Query_Vector;
+  std::vector<std::vector<DataType>> Query_Data;
+  uint64_t State;
+  uint64_t Add_cycle;
 };
+struct QeTask {};
 
-struct NsgTask{
+struct DistanceTask {};
+struct NsgTask {
   unsigned query_id;
 };
 // int test(){
@@ -54,8 +56,8 @@ struct RetTask {
   */
 };
 
-uint64_t dimension;
+extern uint64_t dimension;
 
-}
+} // namespace near_mem
 
 #endif // STRUCT_H

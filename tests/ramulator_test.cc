@@ -12,7 +12,8 @@ TEST_CASE("ramulator_test") {
   auto [task_tx, task_rx] = make_task_queue<MemTask>(10);
   auto [ret_tx, ret_rx] = make_task_queue<uint64_t>(10);
   std::cout << "start" << std::endl;
-  auto mem = ramulator_wrapper(m_config, 64, cycle, task_rx, ret_tx);
+  auto mem = ramulator_wrapper(m_config, 64, cycle, std::move(task_rx),
+                               std::move(ret_tx));
 
   for (unsigned i = 0; i < 100; i++) {
     cycle++;

@@ -6,6 +6,9 @@
 #include <efanna2e/index_nsg.h>
 #include <efanna2e/parameters.h>
 #include <efanna2e/util.h>
+#include <fmt/format.h>
+#include <plog/Initializers/RollingFileInitializer.h>
+#include <plog/Log.h>
 #include <string>
 #include <struct.h>
 #include <task_queue.h>
@@ -15,23 +18,28 @@ using namespace efanna2e;
 
 // the controller class take the input from NSG and generate task to PEs
 //
-class Controller : Component {
-  using TaskSender = Sender<PeTask>;
-  using TaskReceiver = Receiver<RetTask>;
+class Controller : public Component {
+  using TaskSender = Sender<NsgTask>;
+  using MemSender = Sender<uint64_t>;
+  using MemReceiver = Receiver<uint64_t>;
 
 public:
-  Controller(NsgTask &&task, uint64_t &current_cycle,
-             std::vector<TaskSender> &&task_sender,
-             std::vector<TaskReceiver> &&task_receiver, const size_t dimension,
-             const size_t n, Metric m, Index *initializer,
-             const float *query_load, unsigned query_num,
+  Controller(uint64_t &current_cycle, std::vector<TaskSender> task_sender,
+             MemSender mem_sender, MemReceiver mem_receiver,
+             const size_t dimension, const size_t n, Metric m,
+             Index *initializer, const float *query_load, unsigned query_num,
              unsigned query_dimenstion)
       : Component(current_cycle), index(dimension, n, m, initializer),
-        task(task), task_sender(task_sender), task_receiver(task_receiver),
-        query_load(query_load), query_num(query_num),
-        query_dimenstion(query_dimenstion) {}
+        task_sender(std::move(task_sender)), mem_sender(std::move(mem_sender)),
+        mem_receiver(mem_receiver), query_load(query_load),
+        query_num(query_num), query_dimenstion(query_dimenstion) {}
 
   bool do_cycle() override;
+  bool all_end() const override {
+    auto end = !this->have_next_task();
+
+    return end;
+  }
   std::string get_internal_size() const override {
     return std::string("");
   }; // TODO add the internal status for the controller for debug
@@ -48,10 +56,9 @@ private:
   // TODO implement it to generate the next task
   PeTask generate_next_task();
   unsigned on_going_reqs = 0;
-  NsgTask task;
   std::vector<TaskSender> task_sender;
-  std::vector<TaskReceiver> task_receiver;
-
+  MemSender mem_sender;
+  MemReceiver mem_receiver;
   // this data is mannaged by outside, don't delete it
   const float *query_load;
   unsigned query_num;
