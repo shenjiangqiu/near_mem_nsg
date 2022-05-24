@@ -5,6 +5,7 @@
 #include "parameters.h"
 #include "neighbor.h"
 #include "index.h"
+#include "PrimitiveBloomFilter.h"
 #include <cassert>
 #include <unordered_map>
 #include <string>
@@ -26,14 +27,14 @@
 namespace efanna2e {
 
 class IndexNSG : public Index {
- public:
+public:
   explicit IndexNSG(const size_t dimension, const size_t n, Metric m, Index *initializer);
 
 
   virtual ~IndexNSG();
 
-  virtual void Save(const char *filename)override;
-  virtual void Load(const char *filename)override;
+  virtual void Save(std::string filename)override;
+  virtual void Load(std::string filename)override;
 
 
   virtual void Build(size_t n, const float *data, const Parameters &parameters) override;
@@ -53,6 +54,19 @@ class IndexNSG : public Index {
   void OptimizeGraph(float* data);
   void Insert_node(unsigned node_id);
   bool Exist_node(unsigned node_id);
+  void PreProcess(
+      std::vector<unsigned>& init_ids, 
+      PrimitiveBloomFilter<unsigned,80000>& BF, 
+      size_t L);
+  void NewSearch(
+      std::vector<unsigned>& init_ids,
+      PrimitiveBloomFilter<unsigned,80000>& BF,
+      const float *query,
+      const float *base,
+      size_t K,
+      size_t L,
+      unsigned *indices,
+      bool thread_zero);
 
   protected:
     typedef std::vector<std::vector<unsigned > > CompactGraph;

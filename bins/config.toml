@@ -1,10 +1,50 @@
-version=1
-all_files=["123",'3450',"789"]
-numbers=[1,2,3,4]
-number=12
-[nsgsettings]
-nsg_option1=123
-nsg_nption2=234
-[nsgsettings.othersetting]
-other1=1
-other2=2
+programs_num=3
+L=200
+K=100
+BF_bit=80000
+BF_hash=10
+BF_unit=8000
+path="/mnt/husky3home/yifud/sdd_data/ANN/benchmarks"
+result_path="/home/yifud/yifud/near_mem_nsg/bins/"
+query_type=[
+    "int8",
+    "float32",
+    "float32",
+    "uint8",
+]
+query_dim=[
+    "100",
+    "100",
+    "96",
+    "128",
+]
+base_path="/mnt/husky3home/yifud/sdd_data/ANN/benchmarks/base/"
+base=[
+    "spacev100m_base",
+    "ANNS100M_base",
+    "deep_100M_base",
+    "sift_100M",
+]
+query_path="/mnt/husky3home/yifud/sdd_data/ANN/benchmarks/query/"
+query=[
+"spacev_query_29316",
+"ANNS_query_100k",
+"deep1B_queries",
+"sift_q_1",
+]
+nsg_path="/mnt/husky3home/yifud/sdd_data/ANN/benchmarks/nsg/"
+nsg=[
+"spacev.100M",
+"ANNS.100M",
+"deep.100M",
+"sift.100M",
+]
+programs=[
+"test_nsg_search_base",
+"test_nsg_search_BF",
+"test_nsg_search_ET",
+"test_nsg_search_both",
+]
+result_no="2"
+
+[other_setting]

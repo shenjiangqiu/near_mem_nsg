@@ -33,9 +33,9 @@ class Index {
       unsigned *indices,
       bool thread_zero) = 0;
 
-  virtual void Save(const char *filename) = 0;
+  virtual void Save(std::string filename) = 0;
 
-  virtual void Load(const char *filename) = 0;
+  virtual void Load(std::string filename) = 0;
 
   inline bool HasBuilt() const { return has_built; }
 

@@ -5,7 +5,7 @@ project(near_mem_nsg VERSION 0.1)
 set(CMAKE_CXX_STANDARD 20 )
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set -Wall
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -fopenmp -Wno-unused-variable")
 #deps
 add_subdirectory(deps/fmt)
 add_subdirectory(deps/plog)
@@ -17,7 +17,7 @@ add_subdirectory(deps/ramulator)
 #main project
 aux_source_directory(src MAINSOURCE)
 add_library(near_mem_nsg ${MAINSOURCE})
-target_link_libraries(near_mem_nsg PUBLIC fmt plog cityhash cpp_bloom ramulator)
+target_link_libraries(near_mem_nsg PUBLIC fmt plog cityhash cpp_bloom ramulator efanna2e)
 target_include_directories(near_mem_nsg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 #tests
