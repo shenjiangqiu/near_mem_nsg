@@ -45,6 +45,7 @@ class PrimitiveBloomFilter : public BloomFilter<NumBits> {
             : BloomFilter<NumBits>( src ) {
 
         }
+        
 
 
         /**

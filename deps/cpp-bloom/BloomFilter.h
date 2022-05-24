@@ -175,7 +175,7 @@ BloomFilter<NumBits>::~BloomFilter( void ) {
  */
 template< std::size_t NumBits >
 BloomFilter<NumBits>::BloomFilter( const BloomFilter<NumBits>& src )
-    : numHashes_( src.numHashes_ ), bloomBits_( 0 ) {
+    : numHashes_( src.numHashes_ ){
 
     // deep copy bitvector
     bloomBits_.reset( new std::bitset<NumBits>( *(src.bloomBits_) ) );

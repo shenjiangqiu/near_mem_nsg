@@ -15,19 +15,393 @@
 #include "efanna2e/parameters.h"
 
 #define BLOOM_FILTER
+#define EARLY_TERMINATION
 
 using namespace std;
 using namespace std::chrono;
 
 namespace efanna2e {
 #define _CONTROL_NUM 100
-IndexNSG::IndexNSG(const size_t dimension, const size_t n, Metric m,
-                   Index *initializer)
-    : Index(dimension, n, m), initializer_{initializer} {}
-
+IndexNSG::IndexNSG(const size_t dimension, const size_t n, Metric m, Index *initializer)
+        : Index(dimension, n, m), initializer_{initializer} {}
 IndexNSG::~IndexNSG() {}
 
-void IndexNSG::Save(const char *filename) {
+void IndexNSG::Search(const float *query, const float *x, size_t K, 
+                      const Parameters &parameters, unsigned *indices, bool thread_zero) 
+{
+  auto s1 = std::chrono::high_resolution_clock::now();
+  // std::cout << "s1: " << std::chrono::duration_cast<std::chrono::milliseconds>(s1.time_since_epoch()).count() %10000<< std::endl;
+  
+#ifdef BLOOM_FILTER
+  PrimitiveBloomFilter<unsigned,80000> BF(8000,10);
+#else
+  boost::dynamic_bitset<> flags{nd_, 0};
+#endif
+  const unsigned L = parameters.Get<unsigned>("L_search");
+  data_ = x;
+  u_int64_t neighbor_count = 0;
+  u_int64_t neighbor_count1 = 0;
+  u_int64_t neighbor_count2 = 0;
+  u_int64_t count1 = 0;
+  u_int64_t count2 = 0;
+  u_int64_t count3 = 0;
+  u_int64_t count4 = 0;
+  u_int64_t count5 = 0;
+  u_int64_t jump_count = 0;
+  u_int64_t test1 = 0;
+  u_int64_t test2 = 0;
+  u_int64_t test_flag = 0;
+  u_int64_t insert_count = 0;
+  std::vector<Neighbor> retset(L + 1);
+  std::vector<unsigned> init_ids(L);
+  
+  // std::mt19937 rng(rand());
+  // GenRandom(rng, init_ids.data(), L, (unsigned) nd_);
+  // auto s2 = std::chrono::high_resolution_clock::now();
+  // std::cout << "s2: " << std::chrono::duration_cast<std::chrono::milliseconds>(s2.time_since_epoch()).count() %10000<< std::endl;
+  
+  // cout << "L: " << L << endl;
+  // cout << "final_graph_[ep_].size()" << final_graph_[ep_].size() << endl;
+
+  unsigned tmp_l = 0;
+  for (; tmp_l < final_graph_[ep_].size(); tmp_l++) {
+    init_ids[tmp_l] = final_graph_[ep_][tmp_l];
+#ifdef BLOOM_FILTER
+    BF.addElement(init_ids[tmp_l]);
+#else
+    flags[init_ids[tmp_l]] = true;
+#endif
+    test_flag++;
+  }
+  for (unsigned i = 0; i < final_graph_[ep_].size(); i++){
+    unsigned neigh = final_graph_[ep_][i];
+    for (unsigned j = 0; j < final_graph_[neigh].size(); j++){
+      unsigned temp_id = final_graph_[neigh][j];
+#ifdef BLOOM_FILTER
+      if (!BF.containsElement(temp_id)){
+        init_ids[tmp_l] = temp_id;
+        BF.addElement(temp_id);
+        test_flag++;
+        tmp_l++;
+      }
+#else
+      if (flags[temp_id] == false){
+        init_ids[tmp_l] = temp_id;
+        flags[temp_id] = true;
+        test_flag++;
+        tmp_l++;
+      }
+#endif
+      if (tmp_l == L)
+        break;
+    }
+    if (tmp_l == L)
+      break;
+  }
+
+  while (tmp_l < L) {
+    unsigned id = rand() % nd_;
+#ifdef BLOOM_FILTER
+        if (BF.containsElement(id))
+          continue;
+        BF.addElement(id);
+#else
+        if (flags[id]) 
+          continue;
+        flags[id] = true;
+#endif
+    test_flag++;
+    init_ids[tmp_l] = id;
+    tmp_l++;
+  }
+
+  for (unsigned i = 0; i < init_ids.size(); i++) {
+    unsigned id = init_ids[i];
+    float dist = distance_->compare(data_ + dimension_ * id, query, (unsigned)dimension_);
+    neighbor_count1++;
+    retset[i] = Neighbor(id, dist, true);
+    // flags[id] = true;
+  }
+  std::sort(retset.begin(), retset.begin() + L);
+  //Early Termination
+  bool Early_Term_flag = false;
+  u_int64_t Early_Term_Counter = 0;
+  int k = 0;
+  while (k < (int)L) {
+    int nk = L;
+
+    if (retset[k].flag) {
+      retset[k].flag = false;
+      unsigned n = retset[k].id;
+
+      for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
+        unsigned id = final_graph_[n][m];
+#ifdef BLOOM_FILTER
+        if (BF.containsElement(id))
+          continue;
+        BF.addElement(id);
+#else
+        if (flags[id]) 
+          continue;
+        flags[id] = true;
+#endif
+        float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
+        neighbor_count2++;
+        if (dist >= retset[L - 1].distance) {
+          jump_count++;
+          continue;
+        }
+        Neighbor nn(id, dist, true);
+        int r = InsertIntoPool(retset.data(), L, nn);
+        insert_count++;
+#ifdef EARLY_TERMINATION
+        if (r >= 150) {
+          Early_Term_Counter++;
+        } else {
+          Early_Term_Counter = 0;
+        }
+        if(Early_Term_Counter >= 10){
+          Early_Term_flag = true;
+        }
+#endif
+        // if (thread_zero){
+        //   std::cout << "Insert_" << insert_count << " r= " << r << std::endl;
+        // }
+        if (r < nk) {
+          nk = r;
+          count1++;
+        }
+      }
+    }
+    if (nk <= k){
+      k = nk;
+      count2++;
+    }
+    else{
+      count3++;
+      k++;
+    }
+#ifdef EARLY_TERMINATION
+    if (Early_Term_flag){
+      count4++;
+      break;
+    }
+#endif
+  }
+  
+  for (size_t i = 0; i < K; i++) {
+    indices[i] = retset[i].id;
+  }
+  auto s4 = std::chrono::high_resolution_clock::now();
+  // std::cout << "s4: " << std::chrono::duration_cast<std::chrono::milliseconds>(s4.time_since_epoch()).count() %10000<< std::endl;;
+  if (thread_zero){
+    // std::cout << "neighbor_count: " << neighbor_count1 + neighbor_count2 << std::endl;
+    // std::cout << "neighbor_count1: " << neighbor_count1 << std::endl;
+    std::cout << "neighbor_count2: " << neighbor_count2 << std::endl;
+    std::cout << "Insert_count: " << insert_count << std::endl;
+    // std::cout << "jump1_count: " << count1 << std::endl;
+    // std::cout << "jump2_count: " << count2 << std::endl;
+    // std::cout << "jump3_count: " << count3 << std::endl;
+    std::cout << "Early_Term_count: " << count4 << std::endl;
+    std::cout << "quick_count: " << test1 << std::endl;
+    std::cout << "sloww_count: " << test2 << std::endl;
+    std::cout << "jump_count: " << jump_count << std::endl;
+    std::cout << "test_flag: " << test_flag << std::endl;
+    // std::cout << "stime1: " << std::chrono::duration_cast<std::chrono::milliseconds>(s2 - s1).count() << " ms" << std::endl;
+    // std::cout << "stime2: " << std::chrono::duration_cast<std::chrono::milliseconds>(s4 - s3).count() << " ms" << std::endl;
+    // std::cout << "Total_time1: " << std::chrono::duration_cast<std::chrono::milliseconds>(s4 - s1).count() << " ms" << std::endl;
+    std::cout << "Total_time2: " << std::chrono::duration_cast<std::chrono::microseconds>(s4 - s1).count() << " us" << std::endl;
+  }
+}
+
+void IndexNSG::PreProcess(std::vector<unsigned>& init_ids, PrimitiveBloomFilter<unsigned,80000>& BF, size_t L){
+  u_int64_t test_flag = 0;
+  unsigned tmp_l = 0;
+  for (; tmp_l < final_graph_[ep_].size(); tmp_l++) {
+    init_ids[tmp_l] = final_graph_[ep_][tmp_l];
+#ifdef BLOOM_FILTER
+    BF.addElement(init_ids[tmp_l]);
+#else
+    flags[init_ids[tmp_l]] = true;
+#endif
+    test_flag++;
+  }
+  for (unsigned i = 0; i < final_graph_[ep_].size(); i++){
+    unsigned neigh = final_graph_[ep_][i];
+    for (unsigned j = 0; j < final_graph_[neigh].size(); j++){
+      unsigned temp_id = final_graph_[neigh][j];
+#ifdef BLOOM_FILTER
+      if (!BF.containsElement(temp_id)){
+        init_ids[tmp_l] = temp_id;
+        BF.addElement(temp_id);
+        test_flag++;
+        tmp_l++;
+      }
+#else
+      if (flags[temp_id] == false){
+        init_ids[tmp_l] = temp_id;
+        flags[temp_id] = true;
+        test_flag++;
+        tmp_l++;
+      }
+#endif
+      if (tmp_l == L)
+        break;
+    }
+    if (tmp_l == L)
+      break;
+  }
+
+  while (tmp_l < L) {
+    unsigned id = rand() % nd_;
+#ifdef BLOOM_FILTER
+        if (BF.containsElement(id))
+          continue;
+        BF.addElement(id);
+#else
+        if (flags[id]) 
+          continue;
+        flags[id] = true;
+#endif
+    test_flag++;
+    init_ids[tmp_l] = id;
+    tmp_l++;
+  }
+  std::cout << "test_flag: " << test_flag << std::endl;
+}
+
+void IndexNSG::NewSearch(
+      std::vector<unsigned>& init_ids_init,
+      PrimitiveBloomFilter<unsigned,80000>& BF,
+      const float *query,
+      const float *base,
+      size_t K,
+      size_t L,
+      unsigned *indices,
+      bool thread_zero)
+{
+  data_ = base;
+  u_int64_t neighbor_count = 0;
+  u_int64_t neighbor_count1 = 0;
+  u_int64_t neighbor_count2 = 0;
+  u_int64_t count1 = 0;
+  u_int64_t count2 = 0;
+  u_int64_t count3 = 0;
+  u_int64_t count4 = 0;
+  u_int64_t count5 = 0;
+  u_int64_t jump_count = 0;
+  u_int64_t test1 = 0;
+  u_int64_t test2 = 0;
+  u_int64_t insert_count = 0;
+  auto s1 = std::chrono::high_resolution_clock::now();
+  
+  // PrimitiveBloomFilter<unsigned,80000> BF(8000,10);
+  // BF = BF_init;
+  std::vector<Neighbor> retset(L + 1);
+  // retset = retset_init;
+  std::vector<unsigned> init_ids(L);
+  init_ids = init_ids_init;
+  
+  for (unsigned i = 0; i < init_ids.size(); i++) {
+    unsigned id = init_ids[i];
+    float dist = distance_->compare(data_ + dimension_ * id, query, (unsigned)dimension_);
+    neighbor_count1++;
+    retset[i] = Neighbor(id, dist, true);
+    // flags[id] = true;
+  }
+  std::sort(retset.begin(), retset.begin() + L);
+  //Early Termination
+  bool Early_Term_flag = false;
+  u_int64_t Early_Term_Counter = 0;
+  int k = 0;
+  while (k < (int)L) {
+    int nk = L;
+
+    if (retset[k].flag) {
+      retset[k].flag = false;
+      unsigned n = retset[k].id;
+
+      for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
+        unsigned id = final_graph_[n][m];
+#ifdef BLOOM_FILTER
+        if (BF.containsElement(id))
+          continue;
+        BF.addElement(id);
+#else
+        if (flags[id]) 
+          continue;
+        flags[id] = true;
+#endif
+        float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
+        neighbor_count2++;
+        if (dist >= retset[L - 1].distance) {
+          jump_count++;
+          continue;
+        }
+        Neighbor nn(id, dist, true);
+        int r = InsertIntoPool(retset.data(), L, nn);
+        insert_count++;
+#ifdef EARLY_TERMINATION
+        if (r >= 150) {
+          Early_Term_Counter++;
+        } else {
+          Early_Term_Counter = 0;
+        }
+        if(Early_Term_Counter >= 10){
+          Early_Term_flag = true;
+        }
+#endif
+        // if (thread_zero){
+        //   std::cout << "Insert_" << insert_count << " r= " << r << std::endl;
+        // }
+        if (r < nk) {
+          nk = r;
+          count1++;
+        }
+      }
+    }
+    if (nk <= k){
+      k = nk;
+      count2++;
+    }
+    else{
+      count3++;
+      k++;
+    }
+#ifdef EARLY_TERMINATION
+    if (Early_Term_flag){
+      count4++;
+      break;
+    }
+#endif
+  }
+  
+  for (size_t i = 0; i < K; i++) {
+    indices[i] = retset[i].id;
+  }
+  auto s4 = std::chrono::high_resolution_clock::now();
+  // std::cout << "s4: " << std::chrono::duration_cast<std::chrono::milliseconds>(s4.time_since_epoch()).count() %10000<< std::endl;;
+  if (thread_zero){
+    // std::cout << "neighbor_count: " << neighbor_count1 + neighbor_count2 << std::endl;
+    // std::cout << "neighbor_count1: " << neighbor_count1 << std::endl;
+    std::cout << "neighbor_count2: " << neighbor_count2 << std::endl;
+    std::cout << "Insert_count: " << insert_count << std::endl;
+    // std::cout << "jump1_count: " << count1 << std::endl;
+    // std::cout << "jump2_count: " << count2 << std::endl;
+    // std::cout << "jump3_count: " << count3 << std::endl;
+    std::cout << "Early_Term_count: " << count4 << std::endl;
+    std::cout << "quick_count: " << test1 << std::endl;
+    std::cout << "sloww_count: " << test2 << std::endl;
+    std::cout << "jump_count: " << jump_count << std::endl;
+    
+    // std::cout << "stime1: " << std::chrono::duration_cast<std::chrono::milliseconds>(s2 - s1).count() << " ms" << std::endl;
+    // std::cout << "stime2: " << std::chrono::duration_cast<std::chrono::milliseconds>(s4 - s3).count() << " ms" << std::endl;
+    // std::cout << "Total_time1: " << std::chrono::duration_cast<std::chrono::milliseconds>(s4 - s1).count() << " ms" << std::endl;
+    std::cout << "Total_time2: " << std::chrono::duration_cast<std::chrono::microseconds>(s4 - s1).count() << " us" << std::endl;
+  }
+}
+
+void IndexNSG::Save(std::string filename) {
   std::ofstream out(filename, std::ios::binary | std::ios::out);
   assert(final_graph_.size() == nd_);
 
@@ -41,7 +415,7 @@ void IndexNSG::Save(const char *filename) {
   out.close();
 }
 
-void IndexNSG::Load(const char *filename) {
+void IndexNSG::Load(std::string filename) {
   std::ifstream in(filename, std::ios::binary);
   in.read((char *)&width, sizeof(unsigned));
   in.read((char *)&ep_, sizeof(unsigned));
@@ -461,222 +835,6 @@ void IndexNSG::Build(size_t /*n*/, const float *data,
   printf("Degree Statistics: Max = %d, Min = %d, Avg = %d\n", max, min, avg);
 
   has_built = true;
-}
-
-void IndexNSG::Search(const float *query, const float *x, size_t K,
-                      const Parameters &parameters, unsigned *indices,
-                      bool thread_zero) {
-
-  auto s1 = std::chrono::high_resolution_clock::now();
-  // std::cout << "s1: " <<
-  // std::chrono::duration_cast<std::chrono::milliseconds>(s1.time_since_epoch()).count()
-  // %10000<< std::endl;
-
-#ifdef BLOOM_FILTER
-  PrimitiveBloomFilter<unsigned, 80000> BF(8000, 10);
-#else
-  boost::dynamic_bitset<> flags{nd_, 0};
-#endif
-  const unsigned L = parameters.Get<unsigned>("L_search");
-  data_ = x;
-  // u_int64_t neighbor_count = 0;
-  u_int64_t neighbor_count1 = 0;
-  u_int64_t neighbor_count2 = 0;
-  u_int64_t count1 = 0;
-  u_int64_t count2 = 0;
-  u_int64_t count3 = 0;
-  // u_int64_t count4 = 0;
-  // u_int64_t count5 = 0;
-  u_int64_t jump_count = 0;
-  u_int64_t test1 = 0;
-  u_int64_t test2 = 0;
-  u_int64_t test_flag = 0;
-  u_int64_t insert_count = 0;
-  std::vector<Neighbor> retset(L + 1);
-  std::vector<unsigned> init_ids(L);
-
-  // std::mt19937 rng(rand());
-  // GenRandom(rng, init_ids.data(), L, (unsigned) nd_);
-  // auto s2 = std::chrono::high_resolution_clock::now();
-  // std::cout << "s2: " <<
-  // std::chrono::duration_cast<std::chrono::milliseconds>(s2.time_since_epoch()).count()
-  // %10000<< std::endl;
-
-  // cout << "L: " << L << endl;
-  // cout << "final_graph_[ep_].size()" << final_graph_[ep_].size() << endl;
-
-  unsigned tmp_l = 0;
-  for (; tmp_l < final_graph_[ep_].size(); tmp_l++) {
-    init_ids[tmp_l] = final_graph_[ep_][tmp_l];
-#ifdef BLOOM_FILTER
-    BF.addElement(init_ids[tmp_l]);
-#else
-    flags[init_ids[tmp_l]] = true;
-#endif
-    test_flag++;
-  }
-  // unsigned j = 0;
-  // while (tmp_l < L) {
-  //   unsigned batch = j / final_graph_[ep_].size();
-  //   unsigned offset = j % final_graph_[ep_].size();
-  //   unsigned temp_id = final_graph_[ep_][offset];
-  //    cout << "temp_id: " << temp_id << endl;
-  //   if (flags[temp_id] == false) {
-  //     init_ids[tmp_l] = final_graph_[temp_id][batch];
-  //     flags[temp_id] = true;
-  //     tmp_l++;
-  //   }
-  //   j++;
-  //   cout << "j: " << j << endl;
-  // }
-  // for(unsigned i=0; i<L; i++){
-  //   cout << "init_ids[" << i << "]: " << init_ids[i] << endl;
-  // }
-
-  for (unsigned i = 0; i < final_graph_[ep_].size(); i++) {
-    unsigned neigh = final_graph_[ep_][i];
-    for (unsigned j = 0; j < final_graph_[neigh].size(); j++) {
-      unsigned temp_id = final_graph_[neigh][j];
-#ifdef BLOOM_FILTER
-      if (!BF.containsElement(temp_id)) {
-        init_ids[tmp_l] = temp_id;
-        BF.addElement(temp_id);
-        test_flag++;
-        tmp_l++;
-      }
-#else
-      if (flags[temp_id] == false) {
-        init_ids[tmp_l] = temp_id;
-        flags[temp_id] = true;
-        test_flag++;
-        tmp_l++;
-      }
-#endif
-      if (tmp_l == L)
-        break;
-    }
-    if (tmp_l == L)
-      break;
-  }
-
-  while (tmp_l < L) {
-    unsigned id = rand() % nd_;
-#ifdef BLOOM_FILTER
-    if (BF.containsElement(id))
-      continue;
-    BF.addElement(id);
-#else
-    if (flags[id])
-      continue;
-    flags[id] = true;
-#endif
-    test_flag++;
-    init_ids[tmp_l] = id;
-    tmp_l++;
-  }
-
-  for (unsigned i = 0; i < init_ids.size(); i++) {
-    unsigned id = init_ids[i];
-    float dist = distance_->compare(data_ + dimension_ * id, query,
-                                    (unsigned)dimension_);
-    neighbor_count1++;
-    retset[i] = Neighbor(id, dist, true);
-    // flags[id] = true;
-  }
-  std::sort(retset.begin(), retset.begin() + L);
-  int k = 0;
-  while (k < (int)L) {
-    int nk = L;
-
-    if (retset[k].flag) {
-      retset[k].flag = false;
-      unsigned n = retset[k].id;
-
-      for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
-        unsigned id = final_graph_[n][m];
-#ifdef BLOOM_FILTER
-        if (BF.containsElement(id))
-          continue;
-        BF.addElement(id);
-#else
-        if (flags[id])
-          continue;
-        flags[id] = true;
-#endif
-        float dist = distance_->compare(query, data_ + dimension_ * id,
-                                        (unsigned)dimension_);
-        neighbor_count2++;
-        if (dist >= retset[L - 1].distance) {
-          jump_count++;
-          continue;
-        }
-        Neighbor nn(id, dist, true);
-        int r = InsertIntoPool(retset.data(), L, nn);
-        insert_count++;
-        // if (thread_zero){
-        //   std::cout << "Insert_" << insert_count << " r= " << r << std::endl;
-        // }
-        if (r < nk) {
-          nk = r;
-          count1++;
-        }
-      }
-    }
-    if (nk <= k) {
-      k = nk;
-      count2++;
-    } else {
-      count3++;
-      k++;
-    }
-
-    // std::cout << "s3: " <<
-    // std::chrono::duration_cast<std::chrono::milliseconds>(s3.time_since_epoch()).count()
-    // %10000<< std::endl; Early stop if (thread_zero){
-    //   auto s3 = std::chrono::high_resolution_clock::now();
-    //   if ((u_int64_t)std::chrono::duration_cast<std::chrono::milliseconds>(s3
-    //   - s1).count() > 10) {
-    //     test1++;
-    //     break;
-    //   }else{
-    //     test2++;
-    //     continue;
-    //   }
-    // }
-  }
-
-  for (size_t i = 0; i < K; i++) {
-    indices[i] = retset[i].id;
-  }
-  auto s4 = std::chrono::high_resolution_clock::now();
-  // std::cout << "s4: " <<
-  // std::chrono::duration_cast<std::chrono::milliseconds>(s4.time_since_epoch()).count()
-  // %10000<< std::endl;;
-  if (thread_zero) {
-    // std::cout << "neighbor_count: " << neighbor_count1 + neighbor_count2 <<
-    // std::endl; std::cout << "neighbor_count1: " << neighbor_count1 <<
-    // std::endl;
-    std::cout << "neighbor_count2: " << neighbor_count2 << std::endl;
-    std::cout << "Insert_count: " << insert_count << std::endl;
-    // std::cout << "jump1_count: " << count1 << std::endl;
-    // std::cout << "jump2_count: " << count2 << std::endl;
-    // std::cout << "jump3_count: " << count3 << std::endl;
-    std::cout << "quick_count: " << test1 << std::endl;
-    std::cout << "sloww_count: " << test2 << std::endl;
-    std::cout << "jump_count: " << jump_count << std::endl;
-    std::cout << "test_flag: " << test_flag << std::endl;
-    // std::cout << "stime1: " <<
-    // std::chrono::duration_cast<std::chrono::milliseconds>(s2 - s1).count() <<
-    // " ms" << std::endl; std::cout << "stime2: " <<
-    // std::chrono::duration_cast<std::chrono::milliseconds>(s4 - s3).count() <<
-    // " ms" << std::endl; std::cout << "Total_time1: " <<
-    // std::chrono::duration_cast<std::chrono::milliseconds>(s4 - s1).count() <<
-    // " ms" << std::endl;
-    std::cout << "Total_time2: "
-              << std::chrono::duration_cast<std::chrono::microseconds>(s4 - s1)
-                     .count()
-              << " us" << std::endl;
-  }
 }
 
 // TODO empty function?

@@ -1,1 +1,4 @@
 build
+*.log
+*.ivecs
+tests/mem_stats.txt
