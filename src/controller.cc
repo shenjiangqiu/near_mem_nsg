@@ -6,23 +6,25 @@ namespace near_mem {
 
 bool near_mem::Controller::do_cycle() {
   bool busy = false;
-  if (have_next_task())
-    for (auto &sender : task_sender) {
-      if (!sender.full()) {
+  if (have_next_task()){
+      if (!task_sender.full()) {
         auto next_query = current_query_id;
         // process this query
-        sender.push(NsgTask{10});
-        PLOG_DEBUG << fmt::format("send task to pe at cycle: {}",
-                                  current_cycle);
+        auto query_node = get_query_node(next_query);
+        task_sender.push(NsgTask{query_node});
+        PLOG_DEBUG << fmt::format("send task {} to Query_Engine at cycle: {}", query_node, current_cycle);
         // if there is no more, break and set to end
         current_query_id++;
-        if (current_query_id >= query_num) {
-          current_query_id = query_num;
-          break;
-        }
       }
-    }
+  }
 
   return busy;
 }
+
+unsigned near_mem::Controller::get_query_node(unsigned query_id) {
+  //TODO: get the query vector from the query id
+  return query_id;
+}
+
+
 } // namespace near_mem

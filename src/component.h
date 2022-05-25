@@ -2,6 +2,7 @@
 #define COMPONET_H
 #include <iostream>
 #include <string>
+#include <struct.h>
 namespace near_mem {
 
 // the component class, you should implement this class's virtual functions

@@ -12,38 +12,38 @@ enum SearchState {
   query_processed,
   query_finished
 };
-enum DataTypeName {
-  uint8,
-  int8,
-  float32,
-};
-struct DataType {
-  std::vector<uint8_t> uint8data;
-  std::vector<int8_t> int8data;
-  std::vector<float> float32data;
-};
-struct NsgData {
-  DataTypeName name;
-  uint64_t Query_ID;
-  uint64_t Query_Dimension;
-  uint64_t Query_Vector;
-  std::vector<std::vector<DataType>> Query_Data;
-  uint64_t State;
-  uint64_t Add_cycle;
-};
-struct QeTask {};
+// enum DataTypeName {
+//   uint8,
+//   int8,
+//   float32,
+// };
+// struct DataType {
+//   std::vector<uint8_t> uint8data;
+//   std::vector<int8_t> int8data;
+//   std::vector<float> float32data;
+// };
+// struct NsgData {
+//   uint64_t Query_ID;
+//   uint64_t Query_Dimension;
+//   std::vector<std::vector<float>> Query_Data;
+//   uint64_t State;
+//   uint64_t Add_cycle;
+// };
 
-struct DistanceTask {};
 struct NsgTask {
   unsigned query_id;
 };
-// int test(){
-//   NsgTask mytask;
-//   if(mytask.data->name==uint8){
-//     auto data=mytask.data->Query_Data[0][0].uint8data;
-//   }
-//   return 0;
-// }
+
+struct DistanceTask {
+  uint64_t qe_name;
+  unsigned query_id;
+  // unsigned query_dimension;
+  // std::vector<std::vector<float>> query_data;
+  // unsigned target_id;
+  // unsigned target_dimension;
+  // std::vector<std::vector<float>> target_data;
+};
+
 
 struct PeTask {
   /*
