@@ -24,15 +24,26 @@ class Controller : public Component {
   using MemReceiver = Receiver<uint64_t>;
 
 public:
-  Controller(uint64_t &current_cycle, std::vector<TaskSender> task_sender,
-             MemSender mem_sender, MemReceiver mem_receiver,
-             const size_t dimension, const size_t n, Metric m,
-             Index *initializer, const float *query_load, unsigned query_num,
-             unsigned query_dimenstion)
-      : Component(current_cycle), index(dimension, n, m, initializer),
-        task_sender(std::move(task_sender)), mem_sender(std::move(mem_sender)),
-        mem_receiver(mem_receiver), query_load(query_load),
-        query_num(query_num), query_dimenstion(query_dimenstion) {}
+  Controller(
+    uint64_t &current_cycle, 
+    TaskSender task_sender,
+    MemSender mem_sender, 
+    MemReceiver mem_receiver,
+    const size_t dimension, 
+    const size_t n, 
+    Metric m,
+    Index *initializer, 
+    const float *query_load, 
+    unsigned query_num,
+    unsigned query_dimenstion) : 
+  Component(current_cycle), 
+  index(dimension, n, m, initializer),
+  task_sender(task_sender), 
+  mem_sender(mem_sender),
+  mem_receiver(mem_receiver), 
+  query_load(query_load),
+  query_num(query_num), 
+  query_dimenstion(query_dimenstion) {}
 
   bool do_cycle() override;
   bool all_end() const override {
@@ -56,7 +67,7 @@ private:
   // TODO implement it to generate the next task
   PeTask generate_next_task();
   unsigned on_going_reqs = 0;
-  std::vector<TaskSender> task_sender;
+  TaskSender task_sender;
   MemSender mem_sender;
   MemReceiver mem_receiver;
   // this data is mannaged by outside, don't delete it
@@ -66,6 +77,7 @@ private:
 
   // runtime data
   unsigned current_query_id = 0;
+  unsigned get_query_node(unsigned query_id);
 };
 
 } // namespace near_mem

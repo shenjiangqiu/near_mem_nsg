@@ -4,44 +4,64 @@
 #include <plog/Initializers/RollingFileInitializer.h>
 #include <plog/Log.h>
 #include <qe.h>
+#include <dc.h>
 #include <struct.h>
 #include <task_queue.h>
 
 using namespace near_mem;
 int main() {
-  plog::init(plog::debug, "test.log", 100 * 1024, 3);
-  unsigned num_pes = 100;
-  std::vector<Sender<NsgTask>> task_senders;
-  std::vector<Receiver<NsgTask>> task_receivers;
-  for (auto i = 0u; i < num_pes; ++i) {
-    auto [sender, receiver] = make_task_queue<NsgTask>(4);
-    task_senders.push_back(sender);
-    task_receivers.push_back(receiver);
-  }
-  auto [mem_sender, mem_receiver] = make_task_queue<uint64_t>(4);
-  auto [mem_ret_sender, mem_ret_receiver] = make_task_queue<uint64_t>(4);
   uint64_t current_cycle = 0;
-  auto controller = Controller(current_cycle, std::move(task_senders),
-                               mem_sender, mem_ret_receiver, 100, 1,
-                               efanna2e::Metric::L2, nullptr, nullptr, 10, 100);
+  plog::init(plog::debug, "test.log", 100 * 1024 * 1024, 3);
+  unsigned num_qe = 8;
+  unsigned num_dc = 8;
+  auto [mem_sender, mem_receiver] = make_task_queue<uint64_t>(64);
+  auto [mem_ret_sender, mem_ret_receiver] = make_task_queue<uint64_t>(64);
+  auto [nsg_sender, nsg_receiver] = make_task_queue<NsgTask>(4);
+  
+  auto controller = Controller(
+    current_cycle, 
+    nsg_sender,
+    mem_sender, 
+    mem_ret_receiver, 
+    100, 
+    1,
+    efanna2e::Metric::L2, 
+    nullptr, 
+    nullptr, 
+    10, 
+    100);
 
-  std::vector<Qe> qes;
-  for (auto i = 0u; i < num_pes; ++i) {
-    std::vector<Sender<QeTask>> qe_senders;
-    std::vector<Receiver<QeTask>> qe_receivers;
-    for (auto j = 0u; j < num_pes; ++j) {
-      auto [sender, receiver] = make_task_queue<QeTask>(4);
-      qe_senders.push_back(sender);
-      qe_receivers.push_back(receiver);
-    }
+  auto [dist_sender, dist_receiver] = make_task_queue<DistanceTask>(4);
+  auto [return_dist_sender, return_dist_receiver] = make_task_queue<DistanceTask>(4);
+  std::vector<Query_Engine> qes;
 
-    qes.push_back(Qe(current_cycle, qe_senders, task_receivers[i]));
+  for (auto i = 0u; i < num_qe; ++i) {
+    qes.push_back(Query_Engine(
+      current_cycle, 
+      i,
+      nsg_receiver, 
+      dist_sender, 
+      return_dist_receiver,
+      mem_sender,
+      mem_ret_receiver));
+  }
+  std::vector<Distance_Computer> dcs;
+  for (auto i = 0u; i < num_dc; ++i) {
+    dcs.push_back(Distance_Computer(
+      current_cycle,
+      i,
+      dist_receiver, 
+      return_dist_sender
+      ));
   }
 
   std::vector<Component *> components;
   components.push_back(&controller);
   for (auto &qe : qes) {
     components.push_back(&qe);
+  }
+  for (auto &dc : dcs) {
+    components.push_back(&dc);
   }
   while (true) {
     for (auto component : components) {
@@ -59,4 +79,7 @@ int main() {
       break;
     }
   }
+  PLOG_DEBUG << fmt::format("Simulation Finished at cycle: {}", current_cycle);
+
+  return 0;
 }
