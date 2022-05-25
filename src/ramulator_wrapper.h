@@ -30,13 +30,15 @@ public:
   void tick();
   void finish();
   ramulator_wrapper(const ramulator::Config &configs, int cacheline,
-                    uint64_t &t_current_cycle, Receiver<MemTask> task_rx,
-                    Sender<uint64_t> ret_tx);
+                    uint64_t &t_current_cycle, Receiver<MemTask>&& task_rx,
+                    Sender<uint64_t> &&ret_tx);
   ~ramulator_wrapper();
   void call_back(ramulator::Request &req);
   std::string get_internal_size() const override;
   std::string get_line_trace() const override;
-
+  bool all_end() const override{
+    return true;
+  }
   [[nodiscard]] unsigned long long int getTotalRequestsRead() const {
     return total_requests_read;
   }

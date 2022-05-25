@@ -1,9 +1,9 @@
 #ifndef TASK_QUEUE_H
 #define TASK_QUEUE_H
+#include <cassert>
 #include <memory>
 #include <queue>
 #include <tuple>
-#include<cassert>
 namespace near_mem {
 
 template <typename DataType> class TaskQueue {
@@ -51,7 +51,6 @@ public:
 private:
   std::shared_ptr<TaskQueue<DataType>> task_queue;
 };
-
 
 // function to make a sender and a receiver
 template <typename DataType>
