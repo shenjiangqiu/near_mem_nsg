@@ -4,13 +4,31 @@
 #include <component.h>
 #include <string>
 #include <task_queue.h>
+#include <plog/Initializers/RollingFileInitializer.h>
+#include <plog/Log.h>
+#include <efanna2e/exceptions.h>
+#include <efanna2e/index_nsg.h>
+#include <efanna2e/parameters.h>
+#include <efanna2e/util.h>
+#include "PrimitiveBloomFilter.h"
+#include <bitset>
+#include <boost/dynamic_bitset.hpp>
 
 namespace near_mem {
 enum SearchState {
   query_init,
-  query_init_finish,
-  query_processed,
-  query_finished
+  query_init_pending,
+  query_init_finish, // + sort finish
+  query_while_loop,
+  query_end_judge,
+  query_end_pending,
+  query_finish,
+  query_done
+};
+enum RequestState {
+  NOT_SEND,
+  INFLIGHT,
+  FINISHED
 };
 // enum DataTypeName {
 //   uint8,
@@ -44,6 +62,12 @@ struct DistanceTask {
   // std::vector<std::vector<float>> target_data;
 };
 
+struct MemReadTask {
+  uint64_t qe_name;
+  unsigned node_id;
+  bool is_edge_table;
+};
+
 
 struct PeTask {
   /*
@@ -57,6 +81,8 @@ struct RetTask {
 };
 
 extern uint64_t dimension;
+extern uint64_t L;
+
 
 } // namespace near_mem
 

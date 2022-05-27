@@ -7,14 +7,26 @@
 #include <fmt/format.h>
 #include <plog/Initializers/RollingFileInitializer.h>
 #include <plog/Log.h>
+#include <efanna2e/index_nsg.h>
+#include <efanna2e/parameters.h>
+#include <efanna2e/util.h>
+#include <efanna2e/neighbor.h>
+#include <efanna2e/distance.h>
+#include "PrimitiveBloomFilter.h"
+#include <bitset>
+#include <boost/dynamic_bitset.hpp>
+#include <iomanip>
+#include <iostream>
+#include <numeric>
+#include <vector>
 
 namespace near_mem {
 class Query_Engine : public Component {
   using TaskReceiver = Receiver<NsgTask>;
   using DistanceSender = Sender<DistanceTask>;
   using DistanceReceiver = Receiver<DistanceTask>;
-  using MemSender = Sender<uint64_t>;
-  using MemReceiver = Receiver<uint64_t>;
+  using MemSender = Sender<MemReadTask>;
+  using MemReceiver = Receiver<MemReadTask>;
 
 public:
   Query_Engine(
@@ -46,7 +58,8 @@ public:
     return std::string(""); 
   }; //
   bool working() const { 
-    return remaining_cycle > 0; 
+    // return remaining_cycle > 0; 
+    return (query_state != query_finish);
   }
 
 private:
@@ -61,6 +74,31 @@ private:
   unsigned palse_id = 0;//TODO: vector<unsigned> palse_list;
   unsigned query_id = 0;
   unsigned remaining_cycle = 0;
+  unsigned query_state = query_finish;
+
+  int dc_test();
+  void print_Neighbor(const efanna2e::Neighbor nn);
+  unsigned init_loop_iter = 0;
+  std::vector<efanna2e::Neighbor> retset[201];//?
+  std::vector<unsigned> init_ids[200];
+  int init_mem_state[200];
+  int init_dc_state[200];
+  int while_k = 0;
+  int while_nk = 0;
+  int while_n = 0;
+  int while_m = 0;
+  int while_r = 0;
+
+  int while_enter_flag[200];//while_enter_flag[k]  ->  retset[while_k].flag, think again
+  //TODO: maybe all don't need [label]?
+  int while_edge_table_read_state[200][50];
+  int while_vec_read_state[200][50];
+  int while_dc_state[50];
+  int while_for_in_loop_m[200];
+  float xxx = 0;
+
+
+
 };
 } // namespace near_mem
 
