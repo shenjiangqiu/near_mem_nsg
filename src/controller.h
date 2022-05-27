@@ -20,8 +20,8 @@ using namespace efanna2e;
 //
 class Controller : public Component {
   using TaskSender = Sender<NsgTask>;
-  using MemSender = Sender<uint64_t>;
-  using MemReceiver = Receiver<uint64_t>;
+  using MemSender = Sender<MemReadTask>;
+  using MemReceiver = Receiver<MemReadTask>;
 
 public:
   Controller(

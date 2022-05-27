@@ -320,7 +320,7 @@ void IndexNSG::NewSearch(
     if (retset[k].flag) {
       retset[k].flag = false;
       unsigned n = retset[k].id;
-
+      //TODO: read edge table
       for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
         unsigned id = final_graph_[n][m];
 #ifdef BLOOM_FILTER
@@ -359,6 +359,7 @@ void IndexNSG::NewSearch(
           count1++;
         }
       }
+      
     }
     if (nk <= k){
       k = nk;
