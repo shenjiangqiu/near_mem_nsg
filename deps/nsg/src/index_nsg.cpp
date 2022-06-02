@@ -14,7 +14,7 @@
 #include "efanna2e/exceptions.h"
 #include "efanna2e/parameters.h"
 
-#define BLOOM_FILTER
+// #define BLOOM_FILTER
 #define EARLY_TERMINATION
 
 using namespace std;
@@ -214,7 +214,11 @@ void IndexNSG::Search(const float *query, const float *x, size_t K,
   }
 }
 
-void IndexNSG::PreProcess(std::vector<unsigned>& init_ids, PrimitiveBloomFilter<unsigned,80000>& BF, size_t L){
+void IndexNSG::PreProcess(
+  std::vector<unsigned>& init_ids, 
+  PrimitiveBloomFilter<unsigned,80000>& BF, 
+  boost::dynamic_bitset<>& flags,
+  size_t L){
   u_int64_t test_flag = 0;
   unsigned tmp_l = 0;
   for (; tmp_l < final_graph_[ep_].size(); tmp_l++) {
@@ -222,6 +226,7 @@ void IndexNSG::PreProcess(std::vector<unsigned>& init_ids, PrimitiveBloomFilter<
 #ifdef BLOOM_FILTER
     BF.addElement(init_ids[tmp_l]);
 #else
+    BF.addElement(init_ids[tmp_l]);
     flags[init_ids[tmp_l]] = true;
 #endif
     test_flag++;
@@ -273,6 +278,7 @@ void IndexNSG::PreProcess(std::vector<unsigned>& init_ids, PrimitiveBloomFilter<
 void IndexNSG::NewSearch(
       std::vector<unsigned>& init_ids_init,
       PrimitiveBloomFilter<unsigned,80000>& BF,
+      boost::dynamic_bitset<>& flags,
       const float *query,
       const float *base,
       size_t K,
@@ -331,6 +337,7 @@ void IndexNSG::NewSearch(
         if (flags[id]) 
           continue;
         flags[id] = true;
+        BF.addElement(id);
 #endif
         float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
         neighbor_count2++;
@@ -402,6 +409,24 @@ void IndexNSG::NewSearch(
   }
 }
 
+
+void IndexNSG::NewSearchInit(
+      std::vector<unsigned>& init_ids,
+      std::vector<efanna2e::Neighbor>& retset,
+      const float *query,
+      const float *base,
+      size_t L)
+{
+  data_ = base;
+  for (unsigned i = 0; i < init_ids.size(); i++) {
+    unsigned id = init_ids[i];
+    float dist = distance_->compare(data_ + dimension_ * id, query, (unsigned)dimension_);
+    retset[i] = Neighbor(id, dist, true);
+    // flags[id] = true;
+  }
+  std::sort(retset.begin(), retset.begin() + L);
+}
+
 void IndexNSG::Save(std::string filename) {
   std::ofstream out(filename, std::ios::binary | std::ios::out);
   assert(final_graph_.size() == nd_);
@@ -414,6 +439,54 @@ void IndexNSG::Save(std::string filename) {
     out.write((char *)final_graph_[i].data(), GK * sizeof(unsigned));
   }
   out.close();
+}
+
+int IndexNSG::NewSearchGetData(
+        std::vector<efanna2e::Neighbor>& retset,
+        boost::dynamic_bitset<>& flags,
+        const float *query,
+        const float *base,
+        size_t L, 
+        int k,
+        std::vector<unsigned>& target_ids)
+{
+    if (k >= (int)L) {
+      return -1;
+    }
+    data_ = base;
+    int nk = L;
+    if (retset[k].flag) {
+      retset[k].flag = false;
+      unsigned n = retset[k].id;
+      //TODO: read edge table
+      for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
+        unsigned id = final_graph_[n][m];
+        if (flags[id]) 
+          continue;
+        flags[id] = true;
+        float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
+        target_ids.push_back(id);
+        if (dist >= retset[L - 1].distance) {
+          continue;
+        }
+        Neighbor nn(id, dist, true);
+        int r = InsertIntoPool(retset.data(), L, nn);
+        // if (thread_zero){
+        //   std::cout << "Insert_" << insert_count << " r= " << r << std::endl;
+        // }
+        if (r < nk) {
+          nk = r;
+        }
+      }
+      
+    }
+    if (nk <= k){
+      k = nk;
+    }
+    else{
+      k++;
+    }
+    return k;
 }
 
 void IndexNSG::Load(std::string filename) {

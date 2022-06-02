@@ -7,36 +7,13 @@ namespace near_mem {
 bool near_mem::Query_Engine::do_cycle() {
   PLOG_DEBUG << "working? " << working() << " state: " << +query_state;
   if (working()) {
-    //test case: simple palse
-    // int dc_ret = dc_test();
-    // if (dc_ret != 2){
-    //   return (bool)dc_ret;
-    // }
-    //test case: simple palse end
     switch(query_state){
-      case query_init: //read_vec_of_init_id
+      case query_init: //200 init_ids dc request: no need to send mem request
         {
-          bool mem_ready_all = true;
-          for (unsigned i = 0; i < 200; ++i) {
-            if(init_mem_state[i] != FINISHED){
-              PLOG_DEBUG << "xxx " << i;
-              mem_ready_all = false;
-              //generate & send mem read request, use mem_read queue
-              //memsend_state: 0: not send, 1: send but not receive, 2: send and receive
-              return 0;
-            }
-          }
-          if (mem_ready_all == true){
-            query_state = query_init_pending;
-            return 1;
-          }
-        }
-        break;
-      case query_init_pending:
-        //TODO: mem_receiver, create a vector of return mem address, let each state machine to find its callback
-        {
+          //generate & send init dc request
+          //init_dc_state: 0: not send, 1: send but not receive, 2: send and receive
           bool dc_ready_all = true;
-          for (unsigned i = 0; i < 200; ++i){
+          for (unsigned i = 0; i < L; ++i){
             if(init_dc_state[i] != FINISHED){
               dc_ready_all = false;
               if(!distance_sender.full() && init_dc_state[i] == NOT_SEND){
@@ -59,163 +36,105 @@ bool near_mem::Query_Engine::do_cycle() {
                   }
                 }
               }
-              //generate & send init dc request
-              //init_dc_state: 0: not send, 1: send but not receive, 2: send and receive
               return 0;
             }
           }
           if (dc_ready_all == true){
             query_state = query_init_finish;
+            //TODO: index.NewSearchInit(init_ids, retset, query_load + query_id * dim, data_load, L);
             //init for following while loop
-            while_k = 0;
-            while_nk = 0;
-            for (unsigned i = 0; i < 200; ++i) {
-              for (unsigned j = 0; j < 50; ++j) {
-                while_edge_table_read_state[i][j] = 0;
-                while_vec_read_state[i][j] = 0;
-              }
-            }
             return 1;
           }
         }
         break;
+
       case query_init_finish:
         //sort retset
         {
-          query_state = query_while_loop;
+          while_k = 0;
+          query_state = query_get_data;
+          // query_state = query_finish;
+          //TODO: Read Edge Table based on while_k
+          dc_task_list.clear();
           PLOG_DEBUG << "sort retset, init done";
         }
         break;
-      case query_while_loop://query_loop_edge_read
+      case query_get_data://query_get_data
         {
-          if (while_k >= 200){
-            query_state = query_done;
+          std::vector<unsigned> target_ids;
+          while_k = index.NewSearchGetData(retset, flags, query_load + query_id * dim, data_load, L, while_k, target_ids);
+          if (while_k == -1){
+            query_state = query_finish;
             return 1;
           }
-          if (while_enter_flag[while_k] == true){
-            bool edge_read_finished = true;
-            for(unsigned i = 0; i < 200; ++i){
-              if(while_edge_table_read_state[while_k][i] != FINISHED){
-                edge_read_finished = false;
-                if(!distance_sender.full() && while_edge_table_read_state[while_k][i] == NOT_SEND){
-                  //send to mem (multi)
-                  while_n = retset[while_k].id;
-                  mem_sender.push(MemReadTask{qe_name, while_n, true});
-                  while_edge_table_read_state[while_k][i] = INFLIGHT;
-                  return 1;
-                }
-                if(while_edge_table_read_state[while_k][i] == INFLIGHT){
-                  if(!mem_receiver.empty()){
-                    auto qe_top_name = mem_receiver.get().qe_name;
-                    auto qe_top_id = mem_receiver.get().node_id;
-                    auto qe_top_is_edge = mem_receiver.get().is_edge_table;
-                    if (qe_top_name == qe_name && qe_top_id == while_n && qe_top_is_edge == true){ //TODO: check a list of palse_id
-                      //how to receive multi
-                      mem_receiver.pop();
-                      //write into retset
-                      while_edge_table_read_state[while_k][i] = FINISHED;
-                      return 1;
-                    }
-                  }
-                }
-                return 0;
-              }
+          else if (target_ids.empty()){
+            return 1;
+            //for this k there is no DC tasks
+          }else{
+            for(auto id : target_ids){
+              dc_task_list.push_back(QE_DC_Task{qe_name, query_id, id, qe_name*1000+id, NOT_SEND});
             }
-            if (edge_read_finished == true){
-              query_state = query_end_judge;
-              while_m = 0;
-              return 1;
-            }
-          } else { // don't enter the flag
-            query_state = query_end_pending;
+            //TODO: generate edge read request
+            query_state = query_pending_edge;
+            return 1;
           }
+            
         }
         break;
-      case query_end_judge: // query_loop_vec_read
-        //TODO: how to deal with the 2 continues?
+      case query_pending_edge:
         {
-          if(while_m >= 50){
-            query_state = query_end_pending;
+          bool all_edge_read_done = true;
+          //TODO: pending edge read
+          if(all_edge_read_done){
+            query_state = query_pending_distance;
             return 1;
-          }
-          //read_vector_from_memory
-          unsigned id = final_graph_[while_n][while_m];
-          if (flag[id]){// or BF
-            while_m++;// "continue"
-            return 1;
-          }
-          if (while_vec_read_state[while_k][while_m] != FINISHED){
-            if(!mem_sender.full() && while_vec_read_state[while_k][while_m] == NOT_SEND){
-              //send to mem (multi)
-              
-              return 1;
-            }
-            if (while_vec_read_state[while_k][while_m] == INFLIGHT){
-              if(!mem_receiver.empty()){
-                auto qe_top_name = mem_receiver.get().qe_name;
-                auto qe_top_id = mem_receiver.get().node_id;
-                auto qe_top_is_edge = mem_receiver.get().is_edge_table;
-                if (qe_top_name == qe_name && qe_top_id == while_n && qe_top_is_edge == false){ //TODO: check a list of palse_id
-                  //how to receive multi
-                  mem_receiver.pop();
-                  //write into retset
-                  while_vec_read_state[while_k][while_m] = FINISHED;
-                  return 1;
-                }
-              }
-            }
+          }else{
             return 0;
           }
-          //if here, all vec is read, start to DC
-          
-          if(init_dc_state[while_m] != FINISHED){
-              if(!distance_sender.full() && init_dc_state[while_m] == NOT_SEND){
-                unsigned dc_node_id = query_id*1000+while_m;
-                distance_sender.push(DistanceTask{qe_name, dc_node_id});
-                PLOG_DEBUG << fmt::format("Palse task {} to Distance_Computer at cycle: {}", query_id, current_cycle);
-                init_dc_state[while_m] = INFLIGHT;
-                return 1;
-              }
-              if(init_dc_state[while_m] == INFLIGHT){
-                if(!return_distance_receiver.empty()){
-                  auto qe_top_name = return_distance_receiver.get().qe_name;
-                  auto qe_top_id = return_distance_receiver.get().query_id;
-                  if (qe_top_name == qe_name && qe_top_id == query_id*1000+while_m){ //TODO: check a list of palse_id
-                    return_distance_receiver.pop();
-                    //write into retset
-                    init_dc_state[while_m] = FINISHED;
-                    PLOG_DEBUG << fmt::format("QE name {}: palse_id {} is done", qe_name, i);
-                    return 1;
-                  }
-                }
-              }
-              //generate & send init dc request
-              //init_dc_state: 0: not send, 1: send but not receive, 2: send and receive
-              return 0;
-          }
-          //if here, dc is done, start to insert
-          float dist = xxx;
-          if (dist >= retset[L - 1].distance){
-            while_m++;
-            return 1;
-          }
-          while_r = InsertIntoPool(retset.data(), L, nn);
-          if (while_r < while_nk){
-            while_nk = while_r;
-            while_m++;
-            return 1;
-          }
         }
         break;
-      case query_end_pending: //go to next while loop
+      case query_pending_distance://pending for dc_task_list
         {
-          if (while_nk <= while_k){
-            while_k = while_nk;
-          } else {
-            while_k++;
+
+          for (auto dc_task : dc_task_list){
+            //TODO state: NOT_READ, READ_INFLIGHT, READ_FINISHED, DC_INFLIGHT, DC_FINISHED
+            if (!mem_sender.full() && dc_task.state == READ_NOT_SEND){
+              mem_sender.push(MemTask{dc_task.mem_read_addr, dc_task.true, qe_name, dc_task.id, false});
+              dc_task.state = READ_INFLIGHT;
+              PLOG_DEBUG << fmt::format("QE name {}: send mem request to Mem_Computer at cycle: {}", qe_name, current_cycle);
+              return 1;
+            }
+            if (!mem_receiver.empty() && dc_task.state == READ_INFLIGHT){
+              auto mem_top_name = mem_receiver.get().qe_name;
+              auto mem_top_id = mem_receiver.get().node_id;
+              if (mem_top_name == qe_name && mem_top_id == dc_task.node_id){
+                mem_receiver.pop();
+                dc_task.state = READ_FINISHED;
+                return 1;
+              }
+            }
+            if(!distance_sender.full() && dc_task.state == READ_FINISHED){//read finish judge is a vector
+              //send dc task
+              distance_sender.push(DistanceTask{dc_task.qe_name, dc_task.node_id});
+              PLOG_DEBUG << fmt::format("Palse task {} to Distance_Computer at cycle: {}", dc_task.query_id, current_cycle);
+              dc_task.state = DC_INFLIGHT;
+              return 1;
+            }
+            if(!return_distance_receiver.empty() && dc_task.state == DC_INFLIGHT){
+              auto qe_top_name = return_distance_receiver.get().qe_name;
+              auto qe_top_id = return_distance_receiver.get().query_id;
+              if (qe_top_name == qe_name && qe_top_id == dc_task.node_id){ //TODO: check a list of palse_id
+                return_distance_receiver.pop();
+                dc_task.state = DC_FINISHED;
+                //write into retset
+                PLOG_DEBUG << fmt::format("QE name {}: palse_id {} is done", qe_name, dc_task.query_id);
+                return 1;
+              }
+            }
           }
-          query_state = query_while_loop;
-          return 1;
+          if(1/*all vector read+DC is done*/){
+            query_state = query_get_data;
+          }
         }
         break;
       case query_finish:
@@ -244,7 +163,12 @@ bool near_mem::Query_Engine::do_cycle() {
       // process next task or send to lower pe according to query id
       // remaining_cycle = 10;
       query_state = query_init;
-      for (unsigned i = 0; i < 200; ++i) {
+      //init the return_set, flags, and init_id to the inited global value.
+      retset = global_retset;
+      init_ids = global_init_ids;
+      flags = global_flags;
+      for (unsigned i = 0; i < L; i++) {
+        query_init_state[i] = READ_FINISHED; // READ_NOT_SEND;
         init_mem_state[i] = FINISHED;
         init_dc_state[i] = NOT_SEND;
       }
@@ -294,4 +218,10 @@ int near_mem::Query_Engine::dc_test(){
 void near_mem::Query_Engine::print_Neighbor(const efanna2e::Neighbor nn){
   cout << "Neighbor: " << nn.id << " " << nn.distance << " " << nn.flag << " ";
 }
+
+int near_mem::Query_Engine::get_data(int k){
+  return k;
+}
+
+
 } // namespace near_mem

@@ -64,6 +64,7 @@ public:
 
 private:
   uint64_t qe_name;
+  unsigned query_id = 0;
   TaskReceiver task_receiver;
   DistanceSender distance_sender;
   DistanceReceiver return_distance_receiver;
@@ -72,23 +73,32 @@ private:
   // TODO: Query state machine
   bool palse = false;
   unsigned palse_id = 0;//TODO: vector<unsigned> palse_list;
-  unsigned query_id = 0;
+  
   unsigned remaining_cycle = 0;
   unsigned query_state = query_finish;
 
   int dc_test();
   void print_Neighbor(const efanna2e::Neighbor nn);
   unsigned init_loop_iter = 0;
-  std::vector<efanna2e::Neighbor> retset[201];//?
-  std::vector<unsigned> init_ids[200];
+  // std::vector<efanna2e::Neighbor> retset[201];//?
+  std::vector<efanna2e::Neighbor> retset = std::vector<efanna2e::Neighbor>(L+1);
+  std::vector<unsigned> init_ids = std::vector<unsigned>(L, 0);
+  boost::dynamic_bitset<> flags = boost::dynamic_bitset<>{points_num, 0};
+  int query_init_state[200];
   int init_mem_state[200];
   int init_dc_state[200];
-  int while_k = 0;
+  int while_k = 0;//reserve for the while loop
+  std::vector<QE_DC_Task> init_task_list;
+  std::vector<QE_DC_Task> dc_task_list;
+
+  int get_data(int while_k);
+
   int while_nk = 0;
   int while_n = 0;
   int while_m = 0;
   int while_r = 0;
 
+  int temp_flags[200];
   int while_enter_flag[200];//while_enter_flag[k]  ->  retset[while_k].flag, think again
   //TODO: maybe all don't need [label]?
   int while_edge_table_read_state[200][50];
@@ -96,8 +106,8 @@ private:
   int while_dc_state[50];
   int while_for_in_loop_m[200];
   float xxx = 0;
-
-
+  efanna2e::Distance* distance_;
+  // efanna2e::IndexNSG index;
 
 };
 } // namespace near_mem

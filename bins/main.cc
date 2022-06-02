@@ -21,7 +21,7 @@
 using namespace std;
 using namespace std::chrono;
 
-uint64_t dimension=0;
+unsigned dimension=0;
 
 void load_data(std::string filename, float*& data, unsigned& num, unsigned& dim) {  // load data with sift10K pattern
   std::ifstream in(filename, std::ios::binary);
@@ -129,7 +129,8 @@ int main(int argc, char **argv) {
   std::vector<efanna2e::Neighbor> retset(L + 1);
   std::vector<unsigned> init_ids(L);
   PrimitiveBloomFilter<unsigned,80000> BF(8000,10);
-  index.PreProcess(init_ids, BF, L);
+  boost::dynamic_bitset<> flags{points_num, 0};
+  index.PreProcess(init_ids, BF, flags, L);
   // std::cout << "init_ids: " << std::endl;
   // for (unsigned kk = 0; kk < K; kk++) {
   //   std::cout << tmp1[kk] << std::endl;
@@ -152,8 +153,9 @@ int main(int argc, char **argv) {
           std::cout << "*****************************************" << std::endl;
           std::cout << "Query: " << i << " " << std::endl;
           auto new_BF=BF;
+          auto new_flags=flags;
           // std::vector<unsigned> tmp(K);
-          index.NewSearch(init_ids, new_BF, query_load + i * dim, data_load, K, L, tmp.data(), true);
+          index.NewSearch(init_ids, new_BF, new_flags, query_load + i * dim, data_load, K, L, tmp.data(), true);
           // index.Search(query_load + i * dim, data_load, K, paras, tmp.data(), true);
           // if (i == 0){
           //   std::cout << "init_ids_x: " << std::endl;
