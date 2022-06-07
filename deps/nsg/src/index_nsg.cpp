@@ -321,6 +321,7 @@ void IndexNSG::NewSearch(
   u_int64_t Early_Term_Counter = 0;
   int k = 0;
   while (k < (int)L) {
+    cout << "k: " << k << endl;
     int nk = L;
 
     if (retset[k].flag) {
@@ -383,9 +384,10 @@ void IndexNSG::NewSearch(
     }
 #endif
   }
-  
+  std::cout << "######################" << std::endl;
   for (size_t i = 0; i < K; i++) {
     indices[i] = retset[i].id;
+    cout << "indices[" << i << "] = " << indices[i] << endl;
   }
   auto s4 = std::chrono::high_resolution_clock::now();
   // std::cout << "s4: " << std::chrono::duration_cast<std::chrono::milliseconds>(s4.time_since_epoch()).count() %10000<< std::endl;;
@@ -448,45 +450,47 @@ int IndexNSG::NewSearchGetData(
         const float *base,
         size_t L, 
         int k,
+        unsigned& edge_table_id,
         std::vector<unsigned>& target_ids)
 {
-    if (k >= (int)L) {
-      return -1;
-    }
-    data_ = base;
-    int nk = L;
-    if (retset[k].flag) {
-      retset[k].flag = false;
-      unsigned n = retset[k].id;
-      //TODO: read edge table
-      for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
-        unsigned id = final_graph_[n][m];
-        if (flags[id]) 
-          continue;
-        flags[id] = true;
-        float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
-        target_ids.push_back(id);
-        if (dist >= retset[L - 1].distance) {
-          continue;
-        }
-        Neighbor nn(id, dist, true);
-        int r = InsertIntoPool(retset.data(), L, nn);
-        // if (thread_zero){
-        //   std::cout << "Insert_" << insert_count << " r= " << r << std::endl;
-        // }
-        if (r < nk) {
-          nk = r;
-        }
+  if (k >= (int)L) {
+    return -1;
+  }
+  data_ = base;
+  int nk = L;
+  if (retset[k].flag) {
+    retset[k].flag = false;
+    unsigned n = retset[k].id;
+    edge_table_id = n;
+    //TODO: read edge table
+    for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
+      unsigned id = final_graph_[n][m];
+      if (flags[id]) 
+        continue;
+      flags[id] = true;
+      float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
+      target_ids.push_back(id);
+      if (dist >= retset[L - 1].distance) {
+        continue;
       }
-      
+      Neighbor nn(id, dist, true);
+      int r = InsertIntoPool(retset.data(), L, nn);
+      // if (thread_zero){
+      //   std::cout << "Insert_" << insert_count << " r= " << r << std::endl;
+      // }
+      if (r < nk) {
+        nk = r;
+      }
     }
-    if (nk <= k){
-      k = nk;
-    }
-    else{
-      k++;
-    }
-    return k;
+    
+  }
+  if (nk <= k){
+    k = nk;
+  }
+  else{
+    k++;
+  }
+  return k;
 }
 
 void IndexNSG::Load(std::string filename) {

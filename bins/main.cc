@@ -17,7 +17,7 @@
 #include <ctime>
 #include <struct.h>
 #define N 1
-#define M 8
+#define M 1
 using namespace std;
 using namespace std::chrono;
 
@@ -140,6 +140,7 @@ int main(int argc, char **argv) {
   std::vector<std::vector<unsigned>> res[N];
   // query_num = 10;
   // index.init_graph(paras);
+  query_num = 1;
   for (unsigned k = 0; k < M; k++){
 #pragma omp parallel for schedule(dynamic)
     for (unsigned j = 0; j < N; j++){

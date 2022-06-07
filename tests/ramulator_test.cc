@@ -22,7 +22,12 @@ TEST_CASE("ramulator_test") {
     mem.cycle();
     if (!ret_rx.empty()) {
       std::cout << mem.get_internal_size() << std::endl;
-
+      auto addr = ret_rx.get().addr;
+      std::cout << "success" << std::endl;
+      std::cout << "cycle: " << cycle << std::endl;
+      std::cout << "addr: " << addr << std::endl;
+      std::cout << "size: " << ret_rx.get().qe_name << std::endl;
+      std::cout << "size: " << ret_rx.get().node_id << std::endl;
       ret_rx.pop();
       //   std::cout << "out: " << ret << " " << cycle << std::endl;
     }
@@ -34,6 +39,12 @@ TEST_CASE("ramulator_test") {
     mem.cycle();
     if (!ret_rx.empty()) {
       std::cout << mem.get_internal_size() << std::endl;
+      auto addr = ret_rx.get().addr;
+      std::cout << "success" << std::endl;
+      std::cout << "cycle: " << cycle << std::endl;
+      std::cout << "addr: " << addr << std::endl;
+      std::cout << "size: " << ret_rx.get().qe_name << std::endl;
+      std::cout << "size: " << ret_rx.get().node_id << std::endl;
       ret_rx.pop();
       //   std::cout << "out: " << ret << " " << cycle << std::endl;
     }

@@ -83,6 +83,7 @@ public:
         const float *base,
         size_t L, 
         int k,
+        unsigned& edge_table_id,
         std::vector<unsigned>& target_ids);
 
 protected:

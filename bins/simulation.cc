@@ -21,11 +21,14 @@
 #include <task_queue.h>
 #include <toml.hpp>
 #include <vector>
-
+#include <time.h>
+#include <sstream>
+#include <RamulatorConfig.h>
+#include <ramulator_wrapper.h>
 
 #define TOML_HEADER_ONLY 1
 #define N 1
-#define M 8
+#define M 1
 
 using namespace std;
 using namespace std::chrono;
@@ -40,6 +43,7 @@ std::vector<efanna2e::Neighbor> global_retset;
 std::vector<unsigned> global_init_ids;
 boost::dynamic_bitset<> global_flags;
 PrimitiveBloomFilter<unsigned,80000> global_BF(8000,10);
+efanna2e::IndexNSG* global_index;
 
 void load_data(std::string filename, float*& data, unsigned& num, unsigned& dim) {  // load data with sift10K pattern
   std::ifstream in(filename, std::ios::binary);
@@ -80,6 +84,10 @@ void save_result(std::string filename, std::vector<std::vector<unsigned> >& resu
 }
 
 int main(int argc, char **argv) {
+  uint64_t current_cycle = 0;
+  
+  std::cout << "*******Read Config: *******" << std::endl;
+  
     // read config file path, for example: "./config.toml"
   if (argc != 2) {
     std::cerr << "Usage: " << argv[0] << " <config_file>" << std::endl;
@@ -109,20 +117,22 @@ int main(int argc, char **argv) {
   std::string nsg_file = path + "/nsg/" + nsg_name + ".nsg";
   std::string result_file = tbl["result_path"].ref<std::string>() + nsg_name + \
                             ".search" + tbl["result_no"].ref<std::string>() + ".ivecs";
+  time_t timestamp;
+  std::stringstream ss;
+  ss << time(&timestamp);
+  std::string ts = ss.str();
+  std::string debug_file = tbl["result_path"].ref<std::string>() + "test_" + ts + ".log";
   std::cout << "base_file: " << base_file << std::endl;
   std::cout << "query_file: " << query_file << std::endl;
   std::cout << "nsg_file: " << nsg_file << std::endl;
   std::cout << "result_file: " << result_file << std::endl;
   L = (unsigned)tbl["L"].ref<int64_t>();
   K = (unsigned)tbl["K"].ref<int64_t>();
-  
   std::cout << "L: " << L << " K: " << K << std::endl;
   if (L < K) {
     std::cout << "search_L cannot be smaller than search_K!" << std::endl;
-    exit(-1);
+    assert(0);
   }
-
-  // 
   load_data(base_file, data_load, points_num, dim);
   load_data(query_file, query_load, query_num, query_dim);
   assert(dim == query_dim);
@@ -137,8 +147,8 @@ int main(int argc, char **argv) {
   paras.Set<unsigned>("L_search", L);
   paras.Set<unsigned>("P_search", L);
   std::cout << std::fixed << std::setprecision(9) << std::left;
-  auto s = std::chrono::high_resolution_clock::now();
-  auto e = std::chrono::high_resolution_clock::now();
+  // auto s = std::chrono::high_resolution_clock::now();
+  // auto e = std::chrono::high_resolution_clock::now();
   //TODO: pre-process for each query
   global_retset = std::vector<efanna2e::Neighbor>(L + 1);
   global_init_ids = std::vector<unsigned>(L);
@@ -147,10 +157,11 @@ int main(int argc, char **argv) {
   // std::vector<unsigned> init_ids(L);
   // PrimitiveBloomFilter<unsigned,80000> BF(8000,10);
   index.PreProcess(global_init_ids, global_BF, global_flags, L);
-
+  global_index=&index;
   std::vector<std::vector<unsigned>> res[N];
   // query_num = 10;
   // index.init_graph(paras);
+  /*
   for (unsigned k = 0; k < M; k++){
 #pragma omp parallel for schedule(dynamic)
     for (unsigned j = 0; j < N; j++){
@@ -185,14 +196,16 @@ int main(int argc, char **argv) {
       }
     }
   }
+  
   std::chrono::duration<double> diff = e - s;
   std::cout << "search time: " << diff.count() << "\n";
 
   save_result(result_file, res[0]);
 
+  */
 
-  uint64_t current_cycle = 0;
-  plog::init(plog::debug, "test_0526.log", 100 * 1024 * 1024, 3);
+  plog::init(plog::debug, debug_file.c_str(), 64 * 1024 * 1024, 10);
+  std::cout << "*******Start Sim: *******" << std::endl;
   unsigned num_qe = 8;
   unsigned num_dc = 8;
   auto [mem_sender, mem_receiver] = make_task_queue<MemReadTask>(64);
@@ -209,7 +222,7 @@ int main(int argc, char **argv) {
     efanna2e::Metric::L2, 
     nullptr, 
     nullptr, 
-    10 //query_num
+    1 //query_num
     );
 
   auto [dist_sender, dist_receiver] = make_task_queue<DistanceTask>(4);
@@ -236,6 +249,15 @@ int main(int argc, char **argv) {
       ));
   }
 
+  ramulator::Config m_config("DDR4-config.cfg");
+  m_config.set_core_num(1);
+  auto mem = ramulator_wrapper(
+    m_config, 
+    64, 
+    current_cycle, 
+    std::move(mem_receiver),
+    std::move(mem_ret_sender));
+
   std::vector<Component *> components;
   components.push_back(&controller);
   for (auto &qe : qes) {
@@ -244,10 +266,11 @@ int main(int argc, char **argv) {
   for (auto &dc : dcs) {
     components.push_back(&dc);
   }
+  components.push_back(&mem);
   int DEAD_LOCK = 0;
   while (true) {
     DEAD_LOCK++;
-    if (DEAD_LOCK > 100000) {
+    if (DEAD_LOCK > 1000000) {
       PLOG_DEBUG << "dead lock";
       break;
     }
@@ -267,7 +290,7 @@ int main(int argc, char **argv) {
       break;
     }
   }
-  PLOG_DEBUG << fmt::format("Simulation Finished at cycle: {}", current_cycle);
+  PLOG_DEBUG << fmt::format("Simulation Finished at cycle: {}, {}", current_cycle, DEAD_LOCK);
 
   return 0;
 }

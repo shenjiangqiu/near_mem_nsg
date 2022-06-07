@@ -45,6 +45,7 @@ struct NsgTask {
 struct DistanceTask {
   uint64_t qe_name;
   unsigned query_id;
+  unsigned node_id;
   // unsigned query_dimension;
   // std::vector<std::vector<float>> query_data;
   // unsigned target_id;
@@ -60,14 +61,19 @@ struct MemReadTask {
   bool is_edge_table;
 };
 
+struct QE_MEM_State{
+  uint64_t mem_read_addr;
+  int state;
+};
+
 struct QE_DC_Task {
   uint64_t qe_name;
   unsigned query_id;
   unsigned node_id;
-  uint64_t mem_read_addr;
-  // std::vector<uint64_t> mem_read_addr;
+  std::vector<QE_MEM_State> mem_read_state;
   int state;
 };
+
 
 
 struct PeTask {
@@ -92,5 +98,6 @@ extern std::vector<efanna2e::Neighbor> global_retset;
 extern std::vector<unsigned> global_init_ids;
 extern boost::dynamic_bitset<> global_flags;
 extern PrimitiveBloomFilter<unsigned,80000> global_BF;
+extern efanna2e::IndexNSG* global_index;
 
 #endif // STRUCT_H

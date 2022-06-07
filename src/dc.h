@@ -47,6 +47,7 @@ private:
 
     unsigned query_id = 0;
     uint64_t occupy_qe_name = 0;
+    unsigned node_id = 0;
 
     unsigned remaining_cycle = 0;
 
