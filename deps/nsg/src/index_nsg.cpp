@@ -328,6 +328,8 @@ void IndexNSG::NewSearch(
       retset[k].flag = false;
       unsigned n = retset[k].id;
       //TODO: read edge table
+      // std::cout << "id: " << n << " edgetable_size = " << final_graph_[n].size() << std::endl;
+
       for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
         unsigned id = final_graph_[n][m];
 #ifdef BLOOM_FILTER
@@ -463,6 +465,7 @@ int IndexNSG::NewSearchGetData(
     unsigned n = retset[k].id;
     edge_table_id = n;
     //TODO: read edge table
+    
     for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
       unsigned id = final_graph_[n][m];
       if (flags[id]) 
@@ -493,6 +496,30 @@ int IndexNSG::NewSearchGetData(
   return k;
 }
 
+void IndexNSG::Print_Edge_Vec(){
+  int cnt = 0;
+  uint64_t start_addr = (uint64_t)(&final_graph_[0]);
+  uint64_t start_addr1 = (uint64_t)(&final_graph_[0][0]);
+  std::cout << "delta: " << std::dec << start_addr1 - start_addr << std::endl;
+  for (unsigned i = 0; i < nd_; i++) {
+    std::cout << "***************" << std::endl;
+    std::cout << "i = " << i << ": " << final_graph_[i].size() << " Phyaddr: " << std::dec << (uint64_t)(&final_graph_[i]) - start_addr << std::endl;
+    for (unsigned j = 0; j < final_graph_[i].size(); j++) {
+      
+      std::cout << final_graph_[i][j] << " j = " << j << " Phy_addr: " << std::dec << (uint64_t)(&final_graph_[i][j]) - start_addr1 << std::endl; 
+      cnt++;    
+    }
+    if (cnt > 10000)
+      break;
+    std::cout << std::endl;
+  }
+}
+
+void IndexNSG::GetSizeAndAddr(unsigned id, int& size, uint64_t& addr){
+  size = (int)(final_graph_[id].size()*(sizeof(unsigned)));
+  addr = (uint64_t)(accumulate_nsg_size[id]*(sizeof(unsigned)));
+}
+
 void IndexNSG::Load(std::string filename) {
   std::ifstream in(filename, std::ios::binary);
   in.read((char *)&width, sizeof(unsigned));
@@ -505,12 +532,20 @@ void IndexNSG::Load(std::string filename) {
     if (in.eof())
       break;
     cc += k;
+    // std::cout<< "cc: " << cc;
+    // std::cout<< " k= " << k <<std::endl;
+    accumulate_nsg_size.push_back(cc);
     std::vector<unsigned> tmp(k);
     in.read((char *)tmp.data(), k * sizeof(unsigned));
     final_graph_.push_back(tmp);
   }
+  std::cout<<cc<<std::endl;
+  std::cout<<nd_<<std::endl;
   cc /= nd_;
   // std::cout<<cc<<std::endl;
+  std::cout<<accumulate_nsg_size.size()<<std::endl;
+  // std::cout<<accumulate_nsg_size[3]<<std::endl;
+  // std::cout<<accumulate_nsg_size[6]<<std::endl;
 }
 void IndexNSG::Load_nn_graph(const char *filename) {
   std::ifstream in(filename, std::ios::binary);

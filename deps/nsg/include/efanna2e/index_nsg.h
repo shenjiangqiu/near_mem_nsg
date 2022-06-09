@@ -85,6 +85,8 @@ public:
         int k,
         unsigned& edge_table_id,
         std::vector<unsigned>& target_ids);
+    void Print_Edge_Vec();
+    void GetSizeAndAddr(unsigned id, int& size, uint64_t& addr);
 
 protected:
     typedef std::vector<std::vector<unsigned > > CompactGraph;
@@ -125,6 +127,7 @@ private:
     size_t data_len;
     size_t neighbor_len;
     KNNGraph nnd_graph;
+    std::vector<uint64_t> accumulate_nsg_size;
 };
 }
 

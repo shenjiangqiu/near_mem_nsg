@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
   auto s = std::chrono::high_resolution_clock::now();
   auto e = std::chrono::high_resolution_clock::now();
   std::vector<std::vector<unsigned> > res[N];
-
+  // index.Print_Edge_Vec();
   // query_num = 10;
   // index.init_graph(paras);
 #pragma omp parallel for schedule(dynamic)

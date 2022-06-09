@@ -1,4 +1,5 @@
 #include <PrimitiveBloomFilter.h>
+#include <RamulatorConfig.h>
 #include <bitset>
 #include <boost/dynamic_bitset.hpp>
 #include <chrono>
@@ -17,26 +18,26 @@
 #include <plog/Initializers/RollingFileInitializer.h>
 #include <plog/Log.h>
 #include <qe.h>
+#include <ramulator_wrapper.h>
+#include <sstream>
 #include <struct.h>
 #include <task_queue.h>
+#include <time.h>
 #include <toml.hpp>
 #include <vector>
-#include <time.h>
-#include <sstream>
-#include <RamulatorConfig.h>
-#include <ramulator_wrapper.h>
-
-#define TOML_HEADER_ONLY 1
-#define N 1
-#define M 1
 
 using namespace std;
 using namespace std::chrono;
 using namespace near_mem;
 
+#define N 1
+#define M 1
+
 unsigned L = 200;
 unsigned K = 100;
 unsigned dimension, points_num, dim, query_num, query_dim;
+unsigned num_compute_unit = 64;
+unsigned latency_compute_unit = 1;
 float* data_load = NULL;
 float* query_load = NULL;
 std::vector<efanna2e::Neighbor> global_retset;
@@ -136,13 +137,8 @@ int main(int argc, char **argv) {
   load_data(base_file, data_load, points_num, dim);
   load_data(query_file, query_load, query_num, query_dim);
   assert(dim == query_dim);
-  // dimension = dim;
-  // data_load = efanna2e::data_align(data_load, points_num, dim);//one must
-  // align the data before build query_load = efanna2e::data_align(query_load,
-  // query_num, query_dim);
   efanna2e::IndexNSG index(dim, points_num, efanna2e::L2, nullptr);
   index.Load(nsg_file);
-
   efanna2e::Parameters paras;
   paras.Set<unsigned>("L_search", L);
   paras.Set<unsigned>("P_search", L);
@@ -153,61 +149,18 @@ int main(int argc, char **argv) {
   global_retset = std::vector<efanna2e::Neighbor>(L + 1);
   global_init_ids = std::vector<unsigned>(L);
   global_flags = boost::dynamic_bitset<>{points_num, 0};
-  // std::vector<efanna2e::Neighbor> retset(L + 1);
-  // std::vector<unsigned> init_ids(L);
   // PrimitiveBloomFilter<unsigned,80000> BF(8000,10);
   index.PreProcess(global_init_ids, global_BF, global_flags, L);
-  global_index=&index;
-  std::vector<std::vector<unsigned>> res[N];
-  // query_num = 10;
   // index.init_graph(paras);
-  /*
-  for (unsigned k = 0; k < M; k++){
-#pragma omp parallel for schedule(dynamic)
-    for (unsigned j = 0; j < N; j++){
-      if (j == 0){
-        s = std::chrono::high_resolution_clock::now();
-      }
-      // std::cout << "user: "<< j << " thread: " << omp_get_thread_num() << std::endl;
-      for (unsigned count = 0, i = j*query_num/N; count < query_num; i++, i%=query_num, count++){
-         std::vector<unsigned> tmp(K);
-        if (j == 0){
-          std::cout << "*****************************************" << std::endl;
-          std::cout << "Query: " << i << " " << std::endl;
-          auto new_BF=global_BF;
-          auto new_flags=global_flags;
-          // std::vector<unsigned> tmp(K);
-          index.NewSearch(global_init_ids, new_BF, new_flags, query_load + i * dim, data_load, K, L, tmp.data(), true);
-          // index.Search(query_load + i * dim, data_load, K, paras, tmp.data(), true);
-          // if (i == 0){
-          //   std::cout << "init_ids_x: " << std::endl;
-          //   for (unsigned kk = 0; kk < K; kk++) {
-          //     std::cout << tmp[kk] << std::endl;
-          //   }
-          //   std::cout << "init_ids_finish_x" << std::endl;
-          // }
-        }
-        else
-          index.Search(query_load + i * dim, data_load, K, paras, tmp.data(), false);
-        res[j].push_back(tmp);
-      }
-      if (j == 0) {
-        e = std::chrono::high_resolution_clock::now();
-      }
-    }
-  }
   
-  std::chrono::duration<double> diff = e - s;
-  std::cout << "search time: " << diff.count() << "\n";
-
-  save_result(result_file, res[0]);
-
-  */
+  global_index = &index;
+  
+  // query_num = 10;
 
   plog::init(plog::debug, debug_file.c_str(), 64 * 1024 * 1024, 10);
   std::cout << "*******Start Sim: *******" << std::endl;
   unsigned num_qe = 8;
-  unsigned num_dc = 8;
+  unsigned num_dc = 32;
   auto [mem_sender, mem_receiver] = make_task_queue<MemReadTask>(64);
   auto [mem_ret_sender, mem_ret_receiver] = make_task_queue<MemReadTask>(64);
   auto [nsg_sender, nsg_receiver] = make_task_queue<NsgTask>(4);
@@ -222,7 +175,7 @@ int main(int argc, char **argv) {
     efanna2e::Metric::L2, 
     nullptr, 
     nullptr, 
-    1 //query_num
+    1000 //query_num
     );
 
   auto [dist_sender, dist_receiver] = make_task_queue<DistanceTask>(4);
@@ -270,7 +223,7 @@ int main(int argc, char **argv) {
   int DEAD_LOCK = 0;
   while (true) {
     DEAD_LOCK++;
-    if (DEAD_LOCK > 1000000) {
+    if (DEAD_LOCK > 10000000) {
       PLOG_DEBUG << "dead lock";
       break;
     }

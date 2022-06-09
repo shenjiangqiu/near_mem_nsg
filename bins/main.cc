@@ -136,11 +136,11 @@ int main(int argc, char **argv) {
   //   std::cout << tmp1[kk] << std::endl;
   // }
   // std::cout << "init_ids_finish" << std::endl;
-
+  // index.Print_Edge_Vec();
   std::vector<std::vector<unsigned>> res[N];
   // query_num = 10;
-  // index.init_graph(paras);
-  query_num = 1;
+  // 
+  query_num = 10;
   for (unsigned k = 0; k < M; k++){
 #pragma omp parallel for schedule(dynamic)
     for (unsigned j = 0; j < N; j++){
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
       }
       // std::cout << "user: "<< j << " thread: " << omp_get_thread_num() << std::endl;
       for (unsigned count = 0, i = j*query_num/N; count < query_num; i++, i%=query_num, count++){
-         std::vector<unsigned> tmp(K);
+        std::vector<unsigned> tmp(K);
         if (j == 0){
           std::cout << "*****************************************" << std::endl;
           std::cout << "Query: " << i << " " << std::endl;

@@ -28,7 +28,7 @@ bool near_mem::Query_Engine::do_cycle() {
                   auto qe_top_name = return_distance_receiver.get().qe_name;
                   auto qe_top_id = return_distance_receiver.get().query_id;
                   auto qe_top_node_id = return_distance_receiver.get().node_id;
-                  if (qe_top_name == qe_name && qe_top_id == query_id && qe_top_node_id == retset[i].id){ //TODO: check a list of palse_id
+                  if (qe_top_name == qe_name && qe_top_id == query_id && qe_top_node_id == retset[i].id){ 
                     return_distance_receiver.pop();
                     //write into retset
                     init_dc_state[i] = FINISHED;
@@ -66,7 +66,7 @@ bool near_mem::Query_Engine::do_cycle() {
           std::vector<unsigned> target_ids;
           while_k = global_index->NewSearchGetData(retset, flags, query_load + query_id * dim, data_load, L, while_k, edge_table_id, target_ids);
           PLOG_DEBUG << "k: " << while_k << " of qe name: " << qe_name;
-          std::cout << "k: " << while_k << std::endl;
+          std::cout << query_id << "_id's " << "k=" << while_k << std::endl;
           if (while_k == -1){
             query_state = query_finish;
             PLOG_DEBUG << "k>=200 " << qe_name;
@@ -88,15 +88,13 @@ bool near_mem::Query_Engine::do_cycle() {
             }
             edge_read_task = QE_DC_Task{qe_name, query_id, edge_table_id, edge_read_state, NOT_SEND};
             for(auto &id : target_ids){
-              //TODO: generate each mem read request
-              //TODO: address: qe_name*1000+id -> a vector of uint64_t address
               std::vector<uint64_t> vec_read_list;
               address_mapping(id, false, vec_read_list);
               std::vector<QE_MEM_State> vec_read_state;
               for (auto &vec_addr: vec_read_list){
                 vec_read_state.push_back(QE_MEM_State{vec_addr, READ_NOT_SEND});
               }
-              dc_task_list.push_back(QE_DC_Task{qe_name, query_id, id, vec_read_state, READ_INFLIGHT}); //TODO: READ_FINISHED -> READ_NOT_SEND
+              dc_task_list.push_back(QE_DC_Task{qe_name, query_id, id, vec_read_state, READ_INFLIGHT}); 
               PLOG_DEBUG << "dc_task_list size: " << dc_task_list.size() << " node_id: " << id;
             }
             
@@ -109,7 +107,6 @@ bool near_mem::Query_Engine::do_cycle() {
       case query_pending_edge://pending the edge table reading
         {
           bool all_edge_read_done = true;
-          //TODO: generate & wait the edge read request
           for (auto &edge_read: edge_read_task.mem_read_state){
             if (edge_read.state != READ_FINISHED){
               all_edge_read_done = false;
@@ -121,7 +118,7 @@ bool near_mem::Query_Engine::do_cycle() {
               }
               if(!mem_receiver.empty() && edge_read.state == READ_INFLIGHT){
                 auto qe_top_addr = mem_receiver.get().addr;
-                if (qe_top_addr == edge_read.mem_read_addr){ //TODO: check a list of palse_id
+                if (qe_top_addr == edge_read.mem_read_addr){ 
                   mem_receiver.pop();
                   //write into retset
                   edge_read.state = READ_FINISHED;
@@ -144,7 +141,7 @@ bool near_mem::Query_Engine::do_cycle() {
           bool all_distance_ready = true;
           int i=0;
           for (auto &dc_task : dc_task_list){
-            //TODO state: NOT_READ, READ_INFLIGHT, READ_FINISHED, DC_INFLIGHT, DC_FINISHED
+            //state: READ_INFLIGHT, READ_FINISHED, DC_INFLIGHT, DC_FINISHED
             bool vector_read_done = true;
             for (auto &vec_read: dc_task.mem_read_state){
               if (vec_read.state != READ_FINISHED){
@@ -191,7 +188,7 @@ bool near_mem::Query_Engine::do_cycle() {
                 auto top_qename = return_distance_receiver.get().qe_name;
                 auto top_query = return_distance_receiver.get().query_id;
                 auto top_nodeid = return_distance_receiver.get().node_id;
-                if (top_qename == qe_name && top_query == query_id && top_nodeid == dc_task.node_id){ //TODO: check a list of palse_id
+                if (top_qename == qe_name && top_query == query_id && top_nodeid == dc_task.node_id){
                   return_distance_receiver.pop();
                   dc_task.state = DC_FINISHED;
                   //write into retset
@@ -256,56 +253,24 @@ bool near_mem::Query_Engine::do_cycle() {
   return false;
 }
 
-int near_mem::Query_Engine::dc_test(){
-  if (palse == true){
-    if (!return_distance_receiver.empty()){
-      auto qe_top_name = return_distance_receiver.get().qe_name;
-      auto qe_top_id = return_distance_receiver.get().query_id;
-      if (qe_top_name == qe_name && qe_top_id == palse_id){ //TODO: check a list of palse_id
-        return_distance_receiver.pop();
-        palse = false;
-        remaining_cycle--;
-        PLOG_DEBUG << fmt::format("QE name {}: palse_id {} is done", qe_name, palse_id);
-        return 1;
-      }
-    }
-    PLOG_DEBUG << fmt::format("QE name {}: palse_id {} is still palsing", qe_name, palse_id);
-    return 0;
-  }
-  if (remaining_cycle == 5){ //send DC task to DC, and set state palse, Can continue sending DC task to DC
-    if(!distance_sender.full()){
-      distance_sender.push(DistanceTask{qe_name, query_id, 100});
-      PLOG_DEBUG << fmt::format("Palse task {} to Distance_Computer at cycle: {}", query_id, current_cycle);
-      palse = true;
-      palse_id = query_id;
-      return 1;
-    }
-    return 0;
-  }
-  return 2;
-}
-
-void near_mem::Query_Engine::print_Neighbor(const efanna2e::Neighbor nn){
-  cout << "Neighbor: " << nn.id << " " << nn.distance << " " << nn.flag << " ";
-}
-
 void near_mem::Query_Engine::address_mapping(unsigned id, bool is_edge_read, std::vector<uint64_t>& address_list){
   int read_size;
-  int offset = 0;
-  //all is float in this case
+  uint64_t start_address;
   if (is_edge_read){ 
-    read_size = 50; //read 50*4B ~ 200B
+    global_index->GetSizeAndAddr(id, read_size, start_address);//read 50*4B ~ 200B
+    start_address += (uint64_t)points_num * (uint64_t)dim * (uint64_t)sizeof(float);
   }else{
     read_size = (int)dim; //read dim*4B ~ 400B
-    id=id*100;
+    start_address = (uint64_t)(id * dim * sizeof(float));
   }
+  read_size += (int)(start_address % CACHELINE_SIZE); //64 is cacheline size
+  start_address -= (uint64_t)(start_address % CACHELINE_SIZE); //align start_address to cacheline
+  int offset = 0;
   while (read_size > 0){
-    address_list.push_back(id + 64 * offset);
-    read_size -= 16; //(each 16 float number reading = 1 cacheline)
+    address_list.push_back(start_address + CACHELINE_SIZE * offset);
+    read_size -= CACHELINE_SIZE;
+    offset++;
   }
 }
-
-
-
 
 } // namespace near_mem

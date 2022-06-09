@@ -62,7 +62,6 @@ private:
 
   efanna2e::IndexNSG index;
   // TODO implement it to generate the next task
-  PeTask generate_next_task();
   unsigned on_going_reqs = 0;
   TaskSender task_sender;
   MemSender mem_sender;

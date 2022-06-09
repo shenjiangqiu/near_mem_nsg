@@ -14,6 +14,9 @@
 #include <bitset>
 #include <boost/dynamic_bitset.hpp>
 
+#define TOML_HEADER_ONLY 1
+#define CACHELINE_SIZE 64
+
 namespace near_mem {
 enum SearchState {
   query_init,
@@ -29,6 +32,13 @@ enum RequestState {
   INFLIGHT,
   FINISHED
 };
+
+enum DC_unit_State {
+  MINUS_PENDING,
+  MULTI_PENDING,
+  PLUS_PENDING
+};
+
 
 enum WhileRequestState {
   READ_NOT_SEND,
@@ -46,11 +56,6 @@ struct DistanceTask {
   uint64_t qe_name;
   unsigned query_id;
   unsigned node_id;
-  // unsigned query_dimension;
-  // std::vector<std::vector<float>> query_data;
-  // unsigned target_id;
-  // unsigned target_dimension;
-  // std::vector<std::vector<float>> target_data;
 };
 
 struct MemReadTask {
@@ -74,17 +79,9 @@ struct QE_DC_Task {
   int state;
 };
 
-
-
-struct PeTask {
-  /*
-      todo the pe task that send to PE
-  */
-};
-struct RetTask {
-  /*
-      todo the ret task that send from PE
-  */
+struct DC_Task_state{
+  unsigned state;
+  unsigned remaining_cycle;
 };
 
 } // namespace near_mem
@@ -94,6 +91,8 @@ extern unsigned L, K;
 extern float* data_load;
 extern float* query_load;
 extern unsigned points_num, dim, query_num, query_dim;
+extern unsigned num_compute_unit;
+extern unsigned latency_compute_unit;
 extern std::vector<efanna2e::Neighbor> global_retset;
 extern std::vector<unsigned> global_init_ids;
 extern boost::dynamic_bitset<> global_flags;

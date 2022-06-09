@@ -78,14 +78,13 @@ private:
   unsigned query_state = query_finish;
 
   int dc_test();
-  void print_Neighbor(const efanna2e::Neighbor nn);
+  void print_Neighbor(const efanna2e::Neighbor nn){
+    std::cout << "Neighbor: " << nn.id << " " << nn.distance << " " << nn.flag << " ";
+  }
   unsigned init_loop_iter = 0;
-  // std::vector<efanna2e::Neighbor> retset[201];//?
   std::vector<efanna2e::Neighbor> retset = std::vector<efanna2e::Neighbor>(L+1);
   std::vector<unsigned> init_ids = std::vector<unsigned>(L, 0);
   boost::dynamic_bitset<> flags = boost::dynamic_bitset<>{points_num, 0};
-  // int query_init_state[200];
-  // int init_mem_state[200];
   int init_dc_state[200];
   int while_k = 0;//reserve for the while loop
   unsigned edge_table_id = 0;
@@ -95,21 +94,6 @@ private:
 
   void address_mapping(unsigned id, bool is_edge_read, std::vector<uint64_t>& address_list);
 
-  // int while_nk = 0;
-  // int while_n = 0;
-  // int while_m = 0;
-  // int while_r = 0;
-
-  // int temp_flags[200];
-  // int while_enter_flag[200];//while_enter_flag[k]  ->  retset[while_k].flag, think again
-  // //TODO: maybe all don't need [label]?
-  // int while_edge_table_read_state[200][50];
-  // int while_vec_read_state[200][50];
-  // int while_dc_state[50];
-  // int while_for_in_loop_m[200];
-  // float xxx = 0;
-  // efanna2e::Distance* distance_;
-  // efanna2e::IndexNSG index;
 
 };
 } // namespace near_mem
