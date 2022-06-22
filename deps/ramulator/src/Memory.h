@@ -18,6 +18,7 @@
 #include <functional>
 #include <tuple>
 #include <vector>
+#include <iostream>
 
 using namespace std;
 
@@ -148,6 +149,8 @@ public:
 
     case 3:
       type = Type::RoCoBaRaCh;
+      cout << "Addr = RoCoBaBgRaCh" << endl;
+      cout << "addr_bits.size() = " << addr_bits.size() << endl;
       break;
 
     default:;
@@ -371,26 +374,22 @@ public:
 
       case int(Type::RoCoBaRaCh):
         // channel
+        // cout << "RoCoBaBgRaCh" << endl;
         req.addr_vec[0] = slice_lower_bits(addr, addr_bits[0]);
         // rank
-        req.addr_vec[(int)T::Level::Rank] =
-            slice_lower_bits(addr, addr_bits[(int)T::Level::Rank]);
+        req.addr_vec[1] = slice_lower_bits(addr, addr_bits[1]);
+        // bankGroup ?
+        req.addr_vec[2] = slice_lower_bits(addr, addr_bits[2]);
         // bank
-
-        req.addr_vec[(int)T::Level::Bank] =
-            slice_lower_bits(addr, addr_bits[(int)T::Level::Bank]);
-        bank = req.addr_vec[(int)T::Level::Bank];
+        req.addr_vec[3] = slice_lower_bits(addr, addr_bits[3]);
+        bank = req.addr_vec[3];
         // Col
         if (bank < 0 or bank > 16) {
           throw;
         }
-        req.addr_vec[(int)T::Level::Column] =
-            slice_lower_bits(addr, addr_bits[(int)T::Level::Column]);
-
+        req.addr_vec[5] = slice_lower_bits(addr, addr_bits[5]);
         // Row
-        req.addr_vec[(int)T::Level::Row] =
-            slice_lower_bits(addr, addr_bits[(int)T::Level::Row]);
-
+        req.addr_vec[4] = slice_lower_bits(addr, addr_bits[4]);
         break;
 
       default:

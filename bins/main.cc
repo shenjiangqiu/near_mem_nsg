@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
   std::vector<std::vector<unsigned>> res[N];
   // query_num = 10;
   // 
-  query_num = 10;
+  query_num = 1000;
   for (unsigned k = 0; k < M; k++){
 #pragma omp parallel for schedule(dynamic)
     for (unsigned j = 0; j < N; j++){

@@ -84,7 +84,9 @@ public:
         size_t L, 
         int k,
         unsigned& edge_table_id,
-        std::vector<unsigned>& target_ids);
+        std::vector<unsigned>& target_ids,
+        std::vector<unsigned>& compare_latency,
+        uint64_t qe_name);
     void Print_Edge_Vec();
     void GetSizeAndAddr(unsigned id, int& size, uint64_t& addr);
 

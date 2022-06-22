@@ -36,7 +36,8 @@ enum RequestState {
 enum DC_unit_State {
   MINUS_PENDING,
   MULTI_PENDING,
-  PLUS_PENDING
+  PLUS_PENDING,
+  FINISHED_PENDING
 };
 
 
@@ -45,7 +46,8 @@ enum WhileRequestState {
   READ_INFLIGHT,
   READ_FINISHED,
   DC_INFLIGHT,
-  DC_FINISHED
+  DC_FINISHED,
+  SORT_FINISHED
 };
 
 struct NsgTask {
@@ -76,6 +78,7 @@ struct QE_DC_Task {
   unsigned query_id;
   unsigned node_id;
   std::vector<QE_MEM_State> mem_read_state;
+  int remaining_compare_cycle;
   int state;
 };
 
@@ -98,5 +101,35 @@ extern std::vector<unsigned> global_init_ids;
 extern boost::dynamic_bitset<> global_flags;
 extern PrimitiveBloomFilter<unsigned,80000> global_BF;
 extern efanna2e::IndexNSG* global_index;
+extern uint64_t stall_qe; //query start -> end
+extern uint64_t stall_dc; //mem ready -> dc finish
+extern uint64_t stall_dc1;
+extern uint64_t stall_mem; //send mem -> mem ready
+extern uint64_t stall_mem1;
+extern uint64_t stall_mem2;
+extern uint64_t stall_mem3;
+extern uint64_t stall_mem4;
+extern uint64_t stall_qe_stage1;
+extern uint64_t stall_qe_stage2;
+extern uint64_t stall_qe_stage3;
+extern uint64_t stall_qe_stage4;
+extern uint64_t stall_qe_stage5;
+extern uint64_t stall_qe_stage6;
+extern uint64_t stall_qe_stage7;
+extern uint64_t stall_qe_stage1_qe0;
+extern uint64_t stall_qe_stage2_qe0;
+extern uint64_t stall_qe_stage3_qe0;
+extern uint64_t stall_qe_stage4_qe0;
+extern uint64_t stall_qe_stage5_qe0;
+extern uint64_t stall_qe_stage6_qe0;
+extern uint64_t stall_qe_stage7_qe0;
+extern uint64_t mem_receive_delta;
+extern uint64_t mem_receive_count;
+extern uint64_t sub_mem_receive_delta;
+extern uint64_t sub_mem_receive_count;
+extern uint64_t unfold_num;
+extern uint64_t exe_time;
+
+extern unsigned global_sizeof;
 
 #endif // STRUCT_H

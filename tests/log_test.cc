@@ -6,9 +6,9 @@
 #include <dc.h>
 #include <struct.h>
 
-unsigned num_compute_unit = 64;
+unsigned num_compute_unit = 16;
 unsigned latency_compute_unit = 1;
-unsigned dim = 64;
+unsigned dim = 200;
 
 TEST_CASE("dc_test") {
   using namespace near_mem;

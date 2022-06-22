@@ -91,8 +91,33 @@ private:
   std::vector<QE_DC_Task> init_task_list;
   QE_DC_Task edge_read_task;
   std::vector<QE_DC_Task> dc_task_list;
-
-  void address_mapping(unsigned id, bool is_edge_read, std::vector<uint64_t>& address_list);
+  uint64_t first_return = 0;//mem receive first return
+  uint64_t last_return = 0;//mem receive last return
+  bool is_first = true;//mem receive first return flag
+  uint64_t sub_first_return = 0;//mem receive first return
+  uint64_t sub_last_return = 0;//mem receive last return
+  bool sub_is_first = true;//mem receive first return flag
+  uint64_t exe_time_start = 0;
+  uint64_t time_edge_start = 0;
+  uint64_t time_vec_start = 0;
+  int offset_edge = 0;
+  int offset_vec = 0;
+  int send_edge = 0;
+  int send_vec = 0;
+  int send_dc = 0;
+  int rcv_edge = 0;
+  int rcv_vec = 0;
+  int rcv_dc = 0;
+  int total_edge = 0;
+  int total_vec = 0;
+  int64_t total_edge_time = 0;
+  int64_t total_vec_time = 0;
+  int64_t total_dc_time = 0;
+  int64_t qe0_edge_time = 0;
+  int64_t qe0_vec_time = 0;
+  int qe0_edge = 0;
+  int qe0_vec = 0;
+  void address_mapping(unsigned id, bool is_edge_read, std::vector<uint64_t>& address_list, int& accumulate_offset);
 
 
 };

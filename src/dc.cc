@@ -30,8 +30,15 @@ bool near_mem::Distance_Computer::do_cycle() {
                     }
                     sub_unit.remaining_cycle--;
                     if (sub_unit.remaining_cycle == 0) {
-                        // sub_unit.remaining_cycle = latency_compute_unit; //TODO: final plus latency
+                        sub_unit.remaining_cycle = 4; //final plus latency log2(16) = 4
                         sub_unit.state = PLUS_PENDING; //FINISH - & *
+                    }
+                    break;
+                case PLUS_PENDING:
+                    all_computation_finished = false;
+                    sub_unit.remaining_cycle--;
+                    if (sub_unit.remaining_cycle == 0) {
+                        sub_unit.state = FINISHED_PENDING;
                     }
                     break;
                 default:
@@ -63,12 +70,12 @@ bool near_mem::Distance_Computer::do_cycle() {
                 sub_unit.state = MINUS_PENDING;
                 // std::cout << "11sub_unit.state: " << sub_unit.state << " sub_unit.remaining_cycle: " << sub_unit.remaining_cycle << std::endl;
             }
-            PLOG_DEBUG << fmt::format("DC name {} receive task {} from QE {} at cycle: {}",
-                                      dc_name, node_id, occupy_qe_name, current_cycle);
+            PLOG_DEBUG << fmt::format ("DC name {} receive task {} from QE {} at cycle: {}",
+                                        dc_name, node_id, occupy_qe_name, current_cycle);
             return true;
         } else {
-            PLOG_DEBUG << fmt::format("DC name {} NO TASK at cycle: {}",
-                                      dc_name, current_cycle);
+            PLOG_DEBUG << fmt::format ("DC name {} NO TASK at cycle: {}",
+                                        dc_name, current_cycle);
             return false;
         }
     }

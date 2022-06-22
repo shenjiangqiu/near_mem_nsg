@@ -453,31 +453,41 @@ int IndexNSG::NewSearchGetData(
         size_t L, 
         int k,
         unsigned& edge_table_id,
-        std::vector<unsigned>& target_ids)
+        std::vector<unsigned>& target_ids,
+        std::vector<unsigned>& compare_latency,
+        uint64_t qe_name)
 {
   if (k >= (int)L) {
     return -1;
   }
+  int temp_k = k;
   data_ = base;
   int nk = L;
+  int node_read_num = 0;
+  int vec_read_num = 0;
+  int compare_num = 0;
   if (retset[k].flag) {
     retset[k].flag = false;
     unsigned n = retset[k].id;
     edge_table_id = n;
-    //TODO: read edge table
     
     for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
+      node_read_num+=1;
       unsigned id = final_graph_[n][m];
       if (flags[id]) 
         continue;
       flags[id] = true;
+      vec_read_num+=1;
       float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
       target_ids.push_back(id);
       if (dist >= retset[L - 1].distance) {
+        compare_latency.push_back(0);
         continue;
       }
       Neighbor nn(id, dist, true);
-      int r = InsertIntoPool(retset.data(), L, nn);
+      unsigned temp_latency = 0;
+      int r = InsertIntoPool_withCompareCount(retset.data(), L, nn, temp_latency);
+      compare_latency.push_back(temp_latency);
       // if (thread_zero){
       //   std::cout << "Insert_" << insert_count << " r= " << r << std::endl;
       // }
@@ -492,6 +502,20 @@ int IndexNSG::NewSearchGetData(
   }
   else{
     k++;
+  }
+  if(qe_name == 0 && (node_read_num != 0 || vec_read_num != 0)){
+    std::cout << "k: " << temp_k;
+    std::cout << " node_read_num: " << node_read_num;
+    std::cout << " vec_read_num: " << vec_read_num;
+    std::cout << " compare_num: " << compare_num;
+    std::cout << " target_ids: ";
+    for (auto &id : target_ids){
+      cout << id << " ";
+    }
+    std::cout << " compare_latency: ";
+    for (auto &latency : compare_latency){
+      cout << latency << " ";
+    }
   }
   return k;
 }

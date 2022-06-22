@@ -35,9 +35,10 @@ using namespace near_mem;
 
 unsigned L = 200;
 unsigned K = 100;
+unsigned global_sizeof = 0;
 unsigned dimension, points_num, dim, query_num, query_dim;
-unsigned num_compute_unit = 64;
-unsigned latency_compute_unit = 1;
+unsigned num_compute_unit = 16; //64 "-" & 64 "*" units for each DC
+unsigned latency_compute_unit = 4;
 float* data_load = NULL;
 float* query_load = NULL;
 std::vector<efanna2e::Neighbor> global_retset;
@@ -45,6 +46,34 @@ std::vector<unsigned> global_init_ids;
 boost::dynamic_bitset<> global_flags;
 PrimitiveBloomFilter<unsigned,80000> global_BF(8000,10);
 efanna2e::IndexNSG* global_index;
+uint64_t stall_qe = 0; //query start -> end
+uint64_t stall_dc = 0; //mem ready -> dc finish
+uint64_t stall_dc1 = 0;
+uint64_t stall_mem = 0; //send mem -> mem ready
+uint64_t stall_mem1 = 0;
+uint64_t stall_mem2 = 0;
+uint64_t stall_mem3 = 0;
+uint64_t stall_mem4 = 0;
+uint64_t stall_qe_stage1 = 0;
+uint64_t stall_qe_stage2 = 0;
+uint64_t stall_qe_stage3 = 0;
+uint64_t stall_qe_stage4 = 0;
+uint64_t stall_qe_stage5 = 0;
+uint64_t stall_qe_stage6 = 0;
+uint64_t stall_qe_stage7 = 0;
+uint64_t stall_qe_stage1_qe0 = 0;
+uint64_t stall_qe_stage2_qe0 = 0;
+uint64_t stall_qe_stage3_qe0 = 0;
+uint64_t stall_qe_stage4_qe0 = 0;
+uint64_t stall_qe_stage5_qe0 = 0;
+uint64_t stall_qe_stage6_qe0 = 0;
+uint64_t stall_qe_stage7_qe0 = 0;
+uint64_t mem_receive_delta = 0;
+uint64_t mem_receive_count = 0;
+uint64_t sub_mem_receive_delta = 0;
+uint64_t sub_mem_receive_count = 0;
+uint64_t unfold_num = 0;
+uint64_t exe_time = 0;
 
 void load_data(std::string filename, float*& data, unsigned& num, unsigned& dim) {  // load data with sift10K pattern
   std::ifstream in(filename, std::ios::binary);
@@ -109,6 +138,14 @@ int main(int argc, char **argv) {
   std::cout << "choose bench num: " << bench_num<< std::endl;
   auto type = tbl["query_type"][bench_num].ref<std::string>();
   std::cout << "query_type: " << type << std::endl;
+  if (type == "int8" || type == "uint8"){
+    global_sizeof = 1;
+  }else if (type == "float32"){
+    global_sizeof = 4;
+  }else{
+    std::cerr << "Type Error: " << type << std::endl;
+    return 1;
+  }
   auto path = tbl["path"].ref<std::string>();
   auto base_name = tbl["base"][bench_num].ref<std::string>();
   auto query_name = tbl["query"][bench_num].ref<std::string>();
@@ -157,10 +194,10 @@ int main(int argc, char **argv) {
   
   // query_num = 10;
 
-  plog::init(plog::debug, debug_file.c_str(), 64 * 1024 * 1024, 10);
+  plog::init(plog::info, debug_file.c_str(), 64 * 1024 * 1024, 10);
   std::cout << "*******Start Sim: *******" << std::endl;
   unsigned num_qe = 8;
-  unsigned num_dc = 32;
+  unsigned num_dc = 8;
   auto [mem_sender, mem_receiver] = make_task_queue<MemReadTask>(64);
   auto [mem_ret_sender, mem_ret_receiver] = make_task_queue<MemReadTask>(64);
   auto [nsg_sender, nsg_receiver] = make_task_queue<NsgTask>(4);
@@ -219,17 +256,21 @@ int main(int argc, char **argv) {
   for (auto &dc : dcs) {
     components.push_back(&dc);
   }
-  components.push_back(&mem);
-  int DEAD_LOCK = 0;
+  // components.push_back(&mem);
+  int combined_cycle = 0;
   while (true) {
-    DEAD_LOCK++;
-    if (DEAD_LOCK > 10000000) {
-      PLOG_DEBUG << "dead lock";
-      break;
-    }
+    combined_cycle++;
+    // if (combined_cycle > 1000000000) {
+    //   PLOG_DEBUG << "dead lock";
+    //   break;
+    // }
     for (auto component : components) {
       component->cycle();
       current_cycle++;//todo: ALL Component run parallel
+    }
+    if(combined_cycle % 2 == 0) {
+      mem.cycle();
+      current_cycle++;
     }
     bool all_end = true;
 
@@ -243,7 +284,39 @@ int main(int argc, char **argv) {
       break;
     }
   }
-  PLOG_DEBUG << fmt::format("Simulation Finished at cycle: {}, {}", current_cycle, DEAD_LOCK);
-
+  PLOG_DEBUG << fmt::format("Simulation Finished at cycle: {}, {}", current_cycle, combined_cycle);
+  std::cout << "*******End Sim: *******" << std::endl;
+  std::cout << "Simulation Finished at cycle:" << current_cycle << " " << combined_cycle << std::endl;
+  std::cout << "*******Start Output: *******" << std::endl;
+  for (auto component : components){
+    std::cout << "Component Get Busy Percent: " << component->get_busy_percent() << std::endl;
+  }
+  std::cout << "MEM Get Busy Percent: " << mem.get_busy_percent() << std::endl;
+  std::cout << "stall_qe: " << stall_qe << std::endl;
+  std::cout << "stall_qe_stage1: " << stall_qe_stage1 << std::endl;
+  std::cout << "stall_qe_stage2: " << stall_qe_stage2 << std::endl;
+  std::cout << "stall_qe_stage3: " << stall_qe_stage3 << std::endl;
+  std::cout << "stall_qe_stage4: " << stall_qe_stage4 << std::endl;
+  std::cout << "stall_qe_stage5: " << stall_qe_stage5 << std::endl;
+  std::cout << "stall_qe_stage6: " << stall_qe_stage6 << std::endl;
+  std::cout << "stall_qe_stage7: " << stall_qe_stage7 << std::endl;
+  std::cout << "stall_qe_stage1_qe0: " << stall_qe_stage1_qe0 << std::endl;
+  std::cout << "stall_qe_stage2_qe0: " << stall_qe_stage2_qe0 << std::endl;
+  std::cout << "stall_qe_stage3_qe0: " << stall_qe_stage3_qe0 << std::endl;
+  std::cout << "stall_qe_stage4_qe0: " << stall_qe_stage4_qe0 << std::endl;
+  std::cout << "stall_qe_stage5_qe0: " << stall_qe_stage5_qe0 << std::endl;
+  std::cout << "stall_qe_stage6_qe0: " << stall_qe_stage6_qe0 << std::endl;
+  std::cout << "stall_qe_stage7_qe0: " << stall_qe_stage7_qe0 << std::endl;
+  std::cout << "stall_dc_init: " << stall_dc1 << std::endl;
+  std::cout << "stall_dc_loop: " << stall_dc << std::endl;
+  std::cout << "stall_vec_mem_loop: " << stall_mem << std::endl;
+  std::cout << "stall_edge_mem: " << stall_mem1 << std::endl;
+  std::cout << "stall_vec_mem: " << stall_mem2 << std::endl;
+  std::cout << "stall_vec_waiting: " << stall_mem3 << std::endl;
+  std::cout << "stall_sort_waiting_tail: " << stall_mem4 << std::endl;
+  std::cout << "mem_return_delta_inside_a_K: " << (double)mem_receive_delta/mem_receive_count << std::endl;
+  std::cout << "mem_return_delta_inside_a_K_sub: " << (double)sub_mem_receive_delta/sub_mem_receive_count << std::endl;
+  std::cout << "avg__exe_time__div__unfold_num: " << (double)exe_time/unfold_num << std::endl;
+  std::cout << "*******End Output: *******" << std::endl;
   return 0;
 }

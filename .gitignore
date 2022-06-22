@@ -2,4 +2,3 @@ build
 *.log
 *.txt
 *.ivecs
-tests/mem_stats.txt

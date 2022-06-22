@@ -70,7 +70,8 @@ void Config::parse(const string& fname)
               addr_mapping = 2;
             else if (tokens[1] == "RoCoBaRaCh")
               addr_mapping = 3;  
-            
+            else
+              assert(0);
             //std::cout<<"  "<<addr_mapping <<std::endl;
         }
         
