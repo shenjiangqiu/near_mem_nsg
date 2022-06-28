@@ -34,16 +34,14 @@ public:
     Metric m,
     Index *initializer, 
     const float *query_load, 
-    unsigned query_num,
-    unsigned query_dimenstion) : 
+    unsigned query_num) : 
   Component(current_cycle), 
   index(dimension, n, m, initializer),
   task_sender(task_sender), 
   mem_sender(mem_sender),
   mem_receiver(mem_receiver), 
   query_load(query_load),
-  query_num(query_num), 
-  query_dimenstion(query_dimenstion) {}
+  query_num(query_num){ }
 
   bool do_cycle() override;
   bool all_end() const override {
@@ -63,9 +61,7 @@ private:
   bool have_next_task() const { return current_query_id < query_num; }
 
   efanna2e::IndexNSG index;
-
   // TODO implement it to generate the next task
-  PeTask generate_next_task();
   unsigned on_going_reqs = 0;
   TaskSender task_sender;
   MemSender mem_sender;
@@ -73,7 +69,7 @@ private:
   // this data is mannaged by outside, don't delete it
   const float *query_load;
   unsigned query_num;
-  unsigned query_dimenstion;
+  // unsigned query_dimenstion;
 
   // runtime data
   unsigned current_query_id = 0;

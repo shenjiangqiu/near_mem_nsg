@@ -14,7 +14,7 @@
 #include "efanna2e/exceptions.h"
 #include "efanna2e/parameters.h"
 
-#define BLOOM_FILTER
+// #define BLOOM_FILTER
 #define EARLY_TERMINATION
 
 using namespace std;
@@ -214,7 +214,11 @@ void IndexNSG::Search(const float *query, const float *x, size_t K,
   }
 }
 
-void IndexNSG::PreProcess(std::vector<unsigned>& init_ids, PrimitiveBloomFilter<unsigned,80000>& BF, size_t L){
+void IndexNSG::PreProcess(
+  std::vector<unsigned>& init_ids, 
+  PrimitiveBloomFilter<unsigned,80000>& BF, 
+  boost::dynamic_bitset<>& flags,
+  size_t L){
   u_int64_t test_flag = 0;
   unsigned tmp_l = 0;
   for (; tmp_l < final_graph_[ep_].size(); tmp_l++) {
@@ -222,6 +226,7 @@ void IndexNSG::PreProcess(std::vector<unsigned>& init_ids, PrimitiveBloomFilter<
 #ifdef BLOOM_FILTER
     BF.addElement(init_ids[tmp_l]);
 #else
+    BF.addElement(init_ids[tmp_l]);
     flags[init_ids[tmp_l]] = true;
 #endif
     test_flag++;
@@ -273,6 +278,7 @@ void IndexNSG::PreProcess(std::vector<unsigned>& init_ids, PrimitiveBloomFilter<
 void IndexNSG::NewSearch(
       std::vector<unsigned>& init_ids_init,
       PrimitiveBloomFilter<unsigned,80000>& BF,
+      boost::dynamic_bitset<>& flags,
       const float *query,
       const float *base,
       size_t K,
@@ -315,12 +321,15 @@ void IndexNSG::NewSearch(
   u_int64_t Early_Term_Counter = 0;
   int k = 0;
   while (k < (int)L) {
+    cout << "k: " << k << endl;
     int nk = L;
 
     if (retset[k].flag) {
       retset[k].flag = false;
       unsigned n = retset[k].id;
       //TODO: read edge table
+      // std::cout << "id: " << n << " edgetable_size = " << final_graph_[n].size() << std::endl;
+
       for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
         unsigned id = final_graph_[n][m];
 #ifdef BLOOM_FILTER
@@ -331,6 +340,7 @@ void IndexNSG::NewSearch(
         if (flags[id]) 
           continue;
         flags[id] = true;
+        BF.addElement(id);
 #endif
         float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
         neighbor_count2++;
@@ -376,9 +386,10 @@ void IndexNSG::NewSearch(
     }
 #endif
   }
-  
+  std::cout << "######################" << std::endl;
   for (size_t i = 0; i < K; i++) {
     indices[i] = retset[i].id;
+    cout << "indices[" << i << "] = " << indices[i] << endl;
   }
   auto s4 = std::chrono::high_resolution_clock::now();
   // std::cout << "s4: " << std::chrono::duration_cast<std::chrono::milliseconds>(s4.time_since_epoch()).count() %10000<< std::endl;;
@@ -402,6 +413,24 @@ void IndexNSG::NewSearch(
   }
 }
 
+
+void IndexNSG::NewSearchInit(
+      std::vector<unsigned>& init_ids,
+      std::vector<efanna2e::Neighbor>& retset,
+      const float *query,
+      const float *base,
+      size_t L)
+{
+  data_ = base;
+  for (unsigned i = 0; i < init_ids.size(); i++) {
+    unsigned id = init_ids[i];
+    float dist = distance_->compare(data_ + dimension_ * id, query, (unsigned)dimension_);
+    retset[i] = Neighbor(id, dist, true);
+    // flags[id] = true;
+  }
+  std::sort(retset.begin(), retset.begin() + L);
+}
+
 void IndexNSG::Save(std::string filename) {
   std::ofstream out(filename, std::ios::binary | std::ios::out);
   assert(final_graph_.size() == nd_);
@@ -416,6 +445,105 @@ void IndexNSG::Save(std::string filename) {
   out.close();
 }
 
+int IndexNSG::NewSearchGetData(
+        std::vector<efanna2e::Neighbor>& retset,
+        boost::dynamic_bitset<>& flags,
+        const float *query,
+        const float *base,
+        size_t L, 
+        int k,
+        unsigned& edge_table_id,
+        std::vector<unsigned>& target_ids,
+        std::vector<unsigned>& compare_latency,
+        uint64_t qe_name)
+{
+  if (k >= (int)L) {
+    return -1;
+  }
+  int temp_k = k;
+  data_ = base;
+  int nk = L;
+  int node_read_num = 0;
+  int vec_read_num = 0;
+  int compare_num = 0;
+  if (retset[k].flag) {
+    retset[k].flag = false;
+    unsigned n = retset[k].id;
+    edge_table_id = n;
+    
+    for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
+      node_read_num+=1;
+      unsigned id = final_graph_[n][m];
+      if (flags[id]) 
+        continue;
+      flags[id] = true;
+      vec_read_num+=1;
+      float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
+      target_ids.push_back(id);
+      if (dist >= retset[L - 1].distance) {
+        compare_latency.push_back(1);
+        continue;
+      }
+      Neighbor nn(id, dist, true);
+      unsigned temp_latency = 0;
+      int r = InsertIntoPool_withCompareCount(retset.data(), L, nn, temp_latency);
+      compare_latency.push_back(temp_latency);
+      // if (thread_zero){
+      //   std::cout << "Insert_" << insert_count << " r= " << r << std::endl;
+      // }
+      if (r < nk) {
+        nk = r;
+      }
+    }
+    
+  }
+  if (nk <= k){
+    k = nk;
+  }
+  else{
+    k++;
+  }
+  if(qe_name == 0 && (node_read_num != 0 || vec_read_num != 0)){
+    std::cout << "k: " << temp_k;
+    std::cout << " node_read_num: " << node_read_num;
+    std::cout << " vec_read_num: " << vec_read_num;
+    std::cout << " compare_num: " << compare_num;
+    std::cout << " target_ids: ";
+    // for (auto &id : target_ids){
+    //   cout << id << " ";
+    // }
+    // std::cout << " compare_latency: ";
+    // for (auto &latency : compare_latency){
+    //   cout << latency << " ";
+    // }
+  }
+  return k;
+}
+
+void IndexNSG::Print_Edge_Vec(){
+  int cnt = 0;
+  uint64_t start_addr = (uint64_t)(&final_graph_[0]);
+  uint64_t start_addr1 = (uint64_t)(&final_graph_[0][0]);
+  std::cout << "delta: " << std::dec << start_addr1 - start_addr << std::endl;
+  for (unsigned i = 0; i < nd_; i++) {
+    std::cout << "***************" << std::endl;
+    std::cout << "i = " << i << ": " << final_graph_[i].size() << " Phyaddr: " << std::dec << (uint64_t)(&final_graph_[i]) - start_addr << std::endl;
+    for (unsigned j = 0; j < final_graph_[i].size(); j++) {
+      
+      std::cout << final_graph_[i][j] << " j = " << j << " Phy_addr: " << std::dec << (uint64_t)(&final_graph_[i][j]) - start_addr1 << std::endl; 
+      cnt++;    
+    }
+    if (cnt > 10000)
+      break;
+    std::cout << std::endl;
+  }
+}
+
+void IndexNSG::GetSizeAndAddr(unsigned id, int& size, uint64_t& addr){
+  size = (int)(final_graph_[id].size()*(sizeof(unsigned)));
+  addr = (uint64_t)(accumulate_nsg_size[id]*(sizeof(unsigned)));
+}
+
 void IndexNSG::Load(std::string filename) {
   std::ifstream in(filename, std::ios::binary);
   in.read((char *)&width, sizeof(unsigned));
@@ -428,12 +556,20 @@ void IndexNSG::Load(std::string filename) {
     if (in.eof())
       break;
     cc += k;
+    // std::cout<< "cc: " << cc;
+    // std::cout<< " k= " << k <<std::endl;
+    accumulate_nsg_size.push_back(cc);
     std::vector<unsigned> tmp(k);
     in.read((char *)tmp.data(), k * sizeof(unsigned));
     final_graph_.push_back(tmp);
   }
+  std::cout<<cc<<std::endl;
+  std::cout<<nd_<<std::endl;
   cc /= nd_;
   // std::cout<<cc<<std::endl;
+  std::cout<<accumulate_nsg_size.size()<<std::endl;
+  // std::cout<<accumulate_nsg_size[3]<<std::endl;
+  // std::cout<<accumulate_nsg_size[6]<<std::endl;
 }
 void IndexNSG::Load_nn_graph(const char *filename) {
   std::ifstream in(filename, std::ios::binary);

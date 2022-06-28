@@ -37,19 +37,18 @@ public:
         return std::string("");
     }; //
     bool working() const {
-        return remaining_cycle > 0;
+        return !dc_work_finished;
     }
 
 private:
     uint64_t dc_name;
     DistanceReceiver distance_receiver;
     DistanceSender return_distance_sender;
-
     unsigned query_id = 0;
     uint64_t occupy_qe_name = 0;
-
-    unsigned remaining_cycle = 0;
-
+    unsigned node_id = 0;
+    bool dc_work_finished = true;
+    std::vector<DC_Task_state> dc_task_state = std::vector<DC_Task_state>(dim);
 }; 
 }// namespace near_mem
 

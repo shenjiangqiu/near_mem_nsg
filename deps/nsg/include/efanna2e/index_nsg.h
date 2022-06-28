@@ -28,47 +28,69 @@ namespace efanna2e {
 
 class IndexNSG : public Index {
 public:
-  explicit IndexNSG(const size_t dimension, const size_t n, Metric m, Index *initializer);
+    explicit IndexNSG(const size_t dimension, const size_t n, Metric m, Index *initializer);
 
 
-  virtual ~IndexNSG();
+    virtual ~IndexNSG();
 
-  virtual void Save(std::string filename)override;
-  virtual void Load(std::string filename)override;
+    virtual void Save(std::string filename)override;
+    virtual void Load(std::string filename)override;
 
 
-  virtual void Build(size_t n, const float *data, const Parameters &parameters) override;
+    virtual void Build(size_t n, const float *data, const Parameters &parameters) override;
 
-  virtual void Search(
-      const float *query,
-      const float *x,
-      size_t k,
-      const Parameters &parameters,
-      unsigned *indices,
-      bool thread_zero) override;
-  void SearchWithOptGraph(
-      const float *query,
-      size_t K,
-      const Parameters &parameters,
-      unsigned *indices);
-  void OptimizeGraph(float* data);
-  void Insert_node(unsigned node_id);
-  bool Exist_node(unsigned node_id);
-  void PreProcess(
-      std::vector<unsigned>& init_ids, 
-      PrimitiveBloomFilter<unsigned,80000>& BF, 
-      size_t L);
-  void NewSearch(
-      std::vector<unsigned>& init_ids,
-      PrimitiveBloomFilter<unsigned,80000>& BF,
-      const float *query,
-      const float *base,
-      size_t K,
-      size_t L,
-      unsigned *indices,
-      bool thread_zero);
+    virtual void Search(
+        const float *query,
+        const float *x,
+        size_t k,
+        const Parameters &parameters,
+        unsigned *indices,
+        bool thread_zero) override;
+    void SearchWithOptGraph(
+        const float *query,
+        size_t K,
+        const Parameters &parameters,
+        unsigned *indices);
+    void OptimizeGraph(float* data);
+    void Insert_node(unsigned node_id);
+    bool Exist_node(unsigned node_id);
+    //near_mem_nsg
+    void PreProcess(
+        std::vector<unsigned>& init_ids, 
+        PrimitiveBloomFilter<unsigned,80000>& BF, 
+        boost::dynamic_bitset<>& flags,
+        size_t L);
+    void NewSearch(
+        std::vector<unsigned>& init_ids,
+        PrimitiveBloomFilter<unsigned,80000>& BF,
+        boost::dynamic_bitset<>& flags,
+        const float *query,
+        const float *base,
+        size_t K,
+        size_t L,
+        unsigned *indices,
+        bool thread_zero);
+    void NewSearchInit(
+        std::vector<unsigned>& init_ids,
+        std::vector<efanna2e::Neighbor>& retset,
+        const float *query,
+        const float *base,
+        size_t L);
+    int NewSearchGetData(
+        std::vector<efanna2e::Neighbor>& retset,
+        boost::dynamic_bitset<>& flags,
+        const float *query,
+        const float *base,
+        size_t L, 
+        int k,
+        unsigned& edge_table_id,
+        std::vector<unsigned>& target_ids,
+        std::vector<unsigned>& compare_latency,
+        uint64_t qe_name);
+    void Print_Edge_Vec();
+    void GetSizeAndAddr(unsigned id, int& size, uint64_t& addr);
 
-  protected:
+protected:
     typedef std::vector<std::vector<unsigned > > CompactGraph;
     typedef std::vector<SimpleNeighbors > LockGraph;
     typedef std::vector<nhood> KNNGraph;
@@ -98,7 +120,7 @@ public:
     void findroot(boost::dynamic_bitset<> &flag, unsigned &root, const Parameters &parameter);
 
 
-  private:
+private:
     unsigned width;
     unsigned ep_;
     std::vector<std::mutex> locks;
@@ -107,6 +129,7 @@ public:
     size_t data_len;
     size_t neighbor_len;
     KNNGraph nnd_graph;
+    std::vector<uint64_t> accumulate_nsg_size;
 };
 }
 

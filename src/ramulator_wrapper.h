@@ -17,6 +17,7 @@
 #include <task_queue.h>
 #include <tuple>
 #include <vector>
+#include <struct.h>
 
 namespace near_mem {
 struct MemTask {
@@ -29,9 +30,12 @@ public:
   void send(uint64_t addr, bool is_read);
   void tick();
   void finish();
-  ramulator_wrapper(const ramulator::Config &configs, int cacheline,
-                    uint64_t &t_current_cycle, Receiver<MemTask>&& task_rx,
-                    Sender<uint64_t> &&ret_tx);
+  ramulator_wrapper(
+    const ramulator::Config &configs, 
+    int cacheline,
+    uint64_t &t_current_cycle, 
+    Receiver<MemReadTask>&& task_rx,
+    Sender<MemReadTask>&& ret_tx);
   ~ramulator_wrapper();
   void call_back(ramulator::Request &req);
   std::string get_internal_size() const override;
@@ -59,9 +63,9 @@ private:
   unsigned long long cycle_in_memory = 0;
   double tCK;
   unsigned long long outgoing_reqs = 0;
-  Receiver<MemTask> in_queue;
+  Receiver<MemReadTask> in_queue;
   std::queue<uint64_t> temp_receive_queue;
-  Sender<uint64_t> out_queue;
+  Sender<MemReadTask> out_queue;
   ramulator::MemoryBase *mem;
 };
 } // namespace near_mem

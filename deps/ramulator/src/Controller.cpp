@@ -54,7 +54,6 @@ void Controller<ALDRAM>::update_temp(ALDRAM::Temp current_temperature){
 template <>
 void Controller<TLDRAM>::tick(){
     clk++;
-    
     int queue_len = readq.size() + writeq.size();
     req_queue_length_sum += queue_len;
     read_req_queue_length_sum += readq.size();

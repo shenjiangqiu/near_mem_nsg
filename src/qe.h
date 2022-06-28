@@ -64,6 +64,7 @@ public:
 
 private:
   uint64_t qe_name;
+  unsigned query_id = 0;
   TaskReceiver task_receiver;
   DistanceSender distance_sender;
   DistanceReceiver return_distance_receiver;
@@ -72,31 +73,51 @@ private:
   // TODO: Query state machine
   bool palse = false;
   unsigned palse_id = 0;//TODO: vector<unsigned> palse_list;
-  unsigned query_id = 0;
+  
   unsigned remaining_cycle = 0;
   unsigned query_state = query_finish;
 
   int dc_test();
-  void print_Neighbor(const efanna2e::Neighbor nn);
+  void print_Neighbor(const efanna2e::Neighbor nn){
+    std::cout << "Neighbor: " << nn.id << " " << nn.distance << " " << nn.flag << " ";
+  }
   unsigned init_loop_iter = 0;
-  std::vector<efanna2e::Neighbor> retset[201];//?
-  std::vector<unsigned> init_ids[200];
-  int init_mem_state[200];
+  std::vector<efanna2e::Neighbor> retset = std::vector<efanna2e::Neighbor>(L+1);
+  std::vector<unsigned> init_ids = std::vector<unsigned>(L, 0);
+  boost::dynamic_bitset<> flags = boost::dynamic_bitset<>{points_num, 0};
   int init_dc_state[200];
-  int while_k = 0;
-  int while_nk = 0;
-  int while_n = 0;
-  int while_m = 0;
-  int while_r = 0;
-
-  int while_enter_flag[200];//while_enter_flag[k]  ->  retset[while_k].flag, think again
-  //TODO: maybe all don't need [label]?
-  int while_edge_table_read_state[200][50];
-  int while_vec_read_state[200][50];
-  int while_dc_state[50];
-  int while_for_in_loop_m[200];
-  float xxx = 0;
-
+  int while_k = 0;//reserve for the while loop
+  unsigned edge_table_id = 0;
+  std::vector<QE_DC_Task> init_task_list;
+  QE_DC_Task edge_read_task;
+  std::vector<QE_DC_Task> dc_task_list;
+  uint64_t first_return = 0;//mem receive first return
+  uint64_t last_return = 0;//mem receive last return
+  bool is_first = true;//mem receive first return flag
+  uint64_t sub_first_return = 0;//mem receive first return
+  uint64_t sub_last_return = 0;//mem receive last return
+  bool sub_is_first = true;//mem receive first return flag
+  uint64_t exe_time_start = 0;
+  uint64_t time_edge_start = 0;
+  uint64_t time_vec_start = 0;
+  int offset_edge = 0;
+  int offset_vec = 0;
+  int send_edge = 0;
+  int send_vec = 0;
+  int send_dc = 0;
+  int rcv_edge = 0;
+  int rcv_vec = 0;
+  int rcv_dc = 0;
+  int total_edge = 0;
+  int total_vec = 0;
+  int64_t total_edge_time = 0;
+  int64_t total_vec_time = 0;
+  int64_t total_dc_time = 0;
+  int64_t qe0_edge_time = 0;
+  int64_t qe0_vec_time = 0;
+  int qe0_edge = 0;
+  int qe0_vec = 0;
+  void address_mapping(unsigned id, bool is_edge_read, std::vector<uint64_t>& address_list, int& accumulate_offset);
 
 
 };
