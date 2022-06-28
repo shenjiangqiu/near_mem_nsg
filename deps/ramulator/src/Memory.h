@@ -19,6 +19,7 @@
 #include <tuple>
 #include <vector>
 #include <iostream>
+#include <bitset>
 
 using namespace std;
 
@@ -133,7 +134,7 @@ public:
     }
 
     int type_in = configs.get_addr_mapping();
-    // std::cout << "addr_mapping is " << type_in << std::endl;
+    // ///std::cout << "addr_mapping is " << type_in << std::endl;
     switch (type_in) {
     case 0:
       type = Type::ChRaBaRoCo;
@@ -149,8 +150,8 @@ public:
 
     case 3:
       type = Type::RoCoBaRaCh;
-      cout << "Addr = RoCoBaBgRaCh" << endl;
-      cout << "addr_bits.size() = " << addr_bits.size() << endl;
+      ///std::cout << "Addr = RoCoBaBgRaCh" << endl;
+      ///std::cout << "addr_bits.size() = " << addr_bits.size() << endl;
       break;
 
     default:;
@@ -275,6 +276,7 @@ public:
     for (auto ctrl : ctrls) {
       cur_que_req_num +=
           ctrl->readq.size() + ctrl->writeq.size() + ctrl->pending.size();
+      ///std::cout << "readq.size()= " << ctrl->readq.size() << " writeq.size()= " << ctrl->writeq.size() << std::endl;
       cur_que_readreq_num += ctrl->readq.size() + ctrl->pending.size();
       cur_que_writereq_num += ctrl->writeq.size();
     }
@@ -320,6 +322,7 @@ public:
       case int(Type::RoCoBaRaCh):
         // channel
         channel_id = slice_lower_bits(addr, addr_bits[0]);
+        ///std::cout << "w: " << channel_id << endl;
         // rank
 
         break;
@@ -338,6 +341,8 @@ public:
 
     // Each transaction size is 2^tx_bits, so first clear the lowest tx_bits
     // bits
+    ///std::cout << "RoCoBaBgRaCh  Addr: 0x" << hex << +addr << endl;
+    ///std::cout << "tx_bits: " << +tx_bits << endl;
     clear_lower_bits(addr, tx_bits);
     auto bank = 0;
     if (use_mapping_file) {
@@ -373,23 +378,30 @@ public:
         break;
 
       case int(Type::RoCoBaRaCh):
+        // Col
+        req.addr_vec[5] = slice_lower_bits(addr, addr_bits[5]);
+        ///std::cout << "addr: " << addr << " addr(bin): " << bitset<sizeof(addr)*8>(addr) << " addr_bits[5]: " << addr_bits[5] << " req.addr_vec[5]: " << req.addr_vec[5] << endl;
         // channel
-        // cout << "RoCoBaBgRaCh" << endl;
+        ///std::cout << "RoCoBaBgRaCh  Addr: 0x" << hex << +addr << endl;
         req.addr_vec[0] = slice_lower_bits(addr, addr_bits[0]);
+        ///std::cout << "addr: " << addr << " addr(bin): " << bitset<sizeof(addr)*8>(addr) << " addr_bits[0]: " << addr_bits[0] << " req.addr_vec[0]: " << req.addr_vec[0] << endl;
         // rank
         req.addr_vec[1] = slice_lower_bits(addr, addr_bits[1]);
+        ///std::cout << "addr: " << addr << " addr(bin): " << bitset<sizeof(addr)*8>(addr) << " addr_bits[1]: " << addr_bits[1] << " req.addr_vec[1]: " << req.addr_vec[1] << endl;
         // bankGroup ?
         req.addr_vec[2] = slice_lower_bits(addr, addr_bits[2]);
+        ///std::cout << "addr: " << addr << " addr(bin): " << bitset<sizeof(addr)*8>(addr) << " addr_bits[2]: " << addr_bits[2] << " req.addr_vec[2]: " << req.addr_vec[2] << endl;
         // bank
         req.addr_vec[3] = slice_lower_bits(addr, addr_bits[3]);
+        ///std::cout << "addr: " << addr << " addr(bin): " << bitset<sizeof(addr)*8>(addr) << " addr_bits[3]: " << addr_bits[3] << " req.addr_vec[3]: " << req.addr_vec[3] << endl;
         bank = req.addr_vec[3];
-        // Col
+        
         if (bank < 0 or bank > 16) {
           throw;
         }
-        req.addr_vec[5] = slice_lower_bits(addr, addr_bits[5]);
         // Row
         req.addr_vec[4] = slice_lower_bits(addr, addr_bits[4]);
+        ///std::cout << "addr: " << addr << " addr(bin): " << bitset<sizeof(addr)*8>(addr) << " addr_bits[4]: " << addr_bits[4] << " req.addr_vec[4]: " << req.addr_vec[4] << endl;
         break;
 
       default:

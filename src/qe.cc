@@ -49,7 +49,8 @@ bool near_mem::Query_Engine::do_cycle() {
             global_index->NewSearchInit(init_ids, retset, query_load + query_id * dim, data_load, L);
             remaining_cycle = 460; //200*log(200): sort cost
             PLOG_DEBUG << "NewSearchInit done";
-            cout << "NewSearchInit done" << endl;
+            if (qe_name == 0)
+              cout << "NewSearchInit done" << endl;   
             //init for following while loop
           }else{
             stall_dc1++;
@@ -122,7 +123,7 @@ bool near_mem::Query_Engine::do_cycle() {
                 vec_read_state.push_back(QE_MEM_State{vec_addr, READ_NOT_SEND});
               }
               dc_task_list.push_back(QE_DC_Task{qe_name, query_id, id, vec_read_state, (int)compare_latency[i], READ_INFLIGHT}); 
-              cout << "i: " << i << " compare_latency " << (int)compare_latency[i];
+              // cout << "i: " << i << " compare_latency " << (int)compare_latency[i];
               i++;
               PLOG_DEBUG << "dc_task_list size: " << dc_task_list.size() << " node_id: " << id;
             }
@@ -212,6 +213,7 @@ bool near_mem::Query_Engine::do_cycle() {
           bool all_distance_ready = true;
           bool all_sort_ready = true;
           bool compare_busy = false;
+          bool prev_sort_finish = true;
           int i=0;
           // int count_finish_sort = 0;
           for (auto &dc_task : dc_task_list){
@@ -309,6 +311,7 @@ bool near_mem::Query_Engine::do_cycle() {
                 }
               }
             } 
+            
             if(dc_task.state == DC_FINISHED) { // finish dc (DC_FINISHED state), get into sorting
               if (dc_task.remaining_compare_cycle == 0) {
                 dc_task.state = SORT_FINISHED;
@@ -316,14 +319,17 @@ bool near_mem::Query_Engine::do_cycle() {
                 // cout << "count_finish_sort" << i << endl;
               } else {
                 all_sort_ready = false;
-                if(compare_busy == false){
+                if(compare_busy == false && prev_sort_finish == true){
                   compare_busy = true; // sort cannot be parallel inside one cycle
                   if(all_distance_ready == true){
                     stall_mem4++;
-                  }
+                  } //TODO: 必须在上一个排序完全完成后, 才能开始这个DC task的排序
                   dc_task.remaining_compare_cycle--;
                 }
               }
+            }
+            if(dc_task.state != SORT_FINISHED){
+              prev_sort_finish = false;
             }
             i++;
           }
@@ -416,7 +422,7 @@ void near_mem::Query_Engine::address_mapping(unsigned id, bool is_edge_read, std
     global_index->GetSizeAndAddr(id, read_size, start_address);//read 50*4B ~ 200B
     start_address += (uint64_t)points_num * (uint64_t)dim * (uint64_t)global_sizeof;
   }else{
-    read_size = (int)dim; //read dim*4B ~ 400B
+    read_size = (int)dim * (int)global_sizeof; //read dim*4B ~ 400B
     start_address = (uint64_t)id * (uint64_t)dim * (uint64_t)global_sizeof;
   }
   read_size += (int)(start_address % CACHELINE_SIZE); //64 is cacheline size

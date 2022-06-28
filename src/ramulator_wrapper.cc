@@ -84,12 +84,14 @@ bool ramulator_wrapper::do_cycle() {
   if (!in_queue.empty()) {
     busy = true;
     auto req = in_queue.get();
+    // std::cout << "get0: " << in_queue.get().addr << endl;
     auto r_req = ramulator::Request(
         req.addr,
         req.is_read ? ramulator::Request::Type::READ
                     : ramulator::Request::Type::WRITE,
         [this](ramulator::Request &req) { this->call_back(req); });
     if (mem->send(r_req)) {
+      // std::cout << "get1: " << in_queue.get().addr << endl;
       if (req.is_read)
         total_requests_read++;
       else

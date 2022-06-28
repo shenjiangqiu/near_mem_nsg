@@ -15,9 +15,9 @@ TEST_CASE("ramulator_test") {
   auto mem = ramulator_wrapper(m_config, 64, cycle, std::move(task_rx),
                                std::move(ret_tx));
 
-  for (unsigned i = 0; i < 100; i++) {
+  for (unsigned i = 0; i < 1; i++) {
     cycle++;
-    task_tx.push({i * 1000, true, 0, 0, 0});
+    task_tx.push({123456789, true, 0, 0, 0});
     std::cout << mem.get_internal_size() << std::endl;
     mem.cycle();
     if (!ret_rx.empty()) {
@@ -34,7 +34,6 @@ TEST_CASE("ramulator_test") {
   }
   while (mem.have_outgoing()) {
     cycle++;
-
     // std::cout << mem.get_internal_size() << std::endl;
     mem.cycle();
     if (!ret_rx.empty()) {

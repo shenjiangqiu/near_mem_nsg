@@ -481,7 +481,7 @@ int IndexNSG::NewSearchGetData(
       float dist = distance_->compare(query, data_ + dimension_ * id, (unsigned)dimension_);
       target_ids.push_back(id);
       if (dist >= retset[L - 1].distance) {
-        compare_latency.push_back(0);
+        compare_latency.push_back(1);
         continue;
       }
       Neighbor nn(id, dist, true);
@@ -509,13 +509,13 @@ int IndexNSG::NewSearchGetData(
     std::cout << " vec_read_num: " << vec_read_num;
     std::cout << " compare_num: " << compare_num;
     std::cout << " target_ids: ";
-    for (auto &id : target_ids){
-      cout << id << " ";
-    }
-    std::cout << " compare_latency: ";
-    for (auto &latency : compare_latency){
-      cout << latency << " ";
-    }
+    // for (auto &id : target_ids){
+    //   cout << id << " ";
+    // }
+    // std::cout << " compare_latency: ";
+    // for (auto &latency : compare_latency){
+    //   cout << latency << " ";
+    // }
   }
   return k;
 }
