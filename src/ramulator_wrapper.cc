@@ -36,7 +36,9 @@ ramulator_wrapper::ramulator_wrapper(
   int cacheline, 
   uint64_t &t_current_cycle,
   Receiver<MemReadTask> &&task_rx,
-  Sender<MemReadTask> &&ret_tx) : 
+  Sender<MemReadTask> &&ret_tx,
+  std::string mem_stat_name
+  ) : 
   Component(t_current_cycle), 
   in_queue(std::move(task_rx)),
   out_queue(std::move(ret_tx)) {
@@ -44,7 +46,7 @@ ramulator_wrapper::ramulator_wrapper(
     assert(name_to_func.find(std_name) != name_to_func.end() &&
           "unrecognized standard name");
     mem = name_to_func[std_name](configs, cacheline);
-    Stats::statlist.output("mem_stats.txt");
+    Stats::statlist.output(mem_stat_name);
     tCK = mem->clk_ns();
 }
 

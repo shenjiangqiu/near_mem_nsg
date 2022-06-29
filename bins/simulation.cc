@@ -156,10 +156,13 @@ int main(int argc, char **argv) {
   std::string result_file = tbl["result_path"].ref<std::string>() + nsg_name + \
                             ".search" + tbl["result_no"].ref<std::string>() + ".ivecs";
   time_t timestamp;
-  std::stringstream ss;
+  std::stringstream ss, sss;
   ss << time(&timestamp);
   std::string ts = ss.str();
-  std::string debug_file = tbl["result_path"].ref<std::string>() + "test_" + ts + ".log";
+  sss << bench_num;
+  string bench_num_str = sss.str();
+  std::string debug_file = tbl["result_path"].ref<std::string>() + "test_" + bench_num_str + "_" + ts + ".log";
+  std::string mem_stat_file = "memstat_" + bench_num_str  + "_" + ts + ".log";
   std::cout << "base_file: " << base_file << std::endl;
   std::cout << "query_file: " << query_file << std::endl;
   std::cout << "nsg_file: " << nsg_file << std::endl;
@@ -196,8 +199,8 @@ int main(int argc, char **argv) {
 
   plog::init(plog::info, debug_file.c_str(), 64 * 1024 * 1024, 10);
   std::cout << "*******Start Sim: *******" << std::endl;
-  unsigned num_qe = 8;
-  unsigned num_dc = 8;
+  unsigned num_qe = 1;
+  unsigned num_dc = 1;
   auto [mem_sender, mem_receiver] = make_task_queue<MemReadTask>(64);
   auto [mem_ret_sender, mem_ret_receiver] = make_task_queue<MemReadTask>(64);
   auto [nsg_sender, nsg_receiver] = make_task_queue<NsgTask>(4);
@@ -246,7 +249,8 @@ int main(int argc, char **argv) {
     64, 
     current_cycle, 
     std::move(mem_receiver),
-    std::move(mem_ret_sender));
+    std::move(mem_ret_sender),
+    mem_stat_file);
 
   std::vector<Component *> components;
   components.push_back(&controller);
