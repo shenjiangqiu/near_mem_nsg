@@ -426,6 +426,9 @@ void near_mem::Query_Engine::address_mapping(unsigned id, bool is_edge_read, std
     start_address = (uint64_t)id * (uint64_t)dim * (uint64_t)global_sizeof;
   }
   read_size += (int)(start_address % CACHELINE_SIZE); //64 is cacheline size
+  // if(start_address % CACHELINE_SIZE == 0){
+  //   cout << " align ";
+  // }
   start_address -= (uint64_t)(start_address % CACHELINE_SIZE); //align start_address to cacheline
   int offset = 0;
   while (read_size > 0){

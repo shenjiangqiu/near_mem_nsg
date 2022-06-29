@@ -35,7 +35,9 @@ public:
     int cacheline,
     uint64_t &t_current_cycle, 
     Receiver<MemReadTask>&& task_rx,
-    Sender<MemReadTask>&& ret_tx);
+    Sender<MemReadTask>&& ret_tx,
+    std::string mem_stat_name
+    );
   ~ramulator_wrapper();
   void call_back(ramulator::Request &req);
   std::string get_internal_size() const override;
